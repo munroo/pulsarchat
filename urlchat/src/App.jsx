@@ -397,7 +397,7 @@ export default function App() {
     }
   }
 
-  function createRoom() {
+  async function createRoom() {
     destroyPeer();
     const code = generateCode();
     setRoomCode(code);
@@ -405,11 +405,15 @@ export default function App() {
 
     window.history.replaceState(null, "", `?room=${code}`);
 
+    // wake up render if sleeping
+    await fetch("https://urlchat.onrender.com/peerjs").catch(() => {});
+
     const p = new Peer(code, {
       host: "urlchat.onrender.com",
       path: "/peerjs",
       secure: true,
       config: ICE_CONFIG,
+      pingInterval: 5000,
     });
     peerRef.current = p;
 
@@ -426,17 +430,21 @@ export default function App() {
     });
   }
 
-  function joinRoom(code) {
+  async function joinRoom(code) {
     destroyPeer();
     const upperCode = code.toUpperCase();
     setRoomCode(upperCode);
     window.history.replaceState(null, "", `?room=${upperCode}`);
+
+    // wake up render if sleeping
+    await fetch("https://urlchat.onrender.com/peerjs").catch(() => {});
 
     const p = new Peer(undefined, {
       host: "urlchat.onrender.com",
       path: "/peerjs",
       secure: true,
       config: ICE_CONFIG,
+      pingInterval: 5000,
     });
     peerRef.current = p;
 
