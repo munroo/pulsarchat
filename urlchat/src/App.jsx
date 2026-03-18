@@ -406,7 +406,7 @@ export default function App() {
     window.history.replaceState(null, "", `?room=${code}`);
 
     const p = new Peer(code, {
-      host: "urlchat-server.onrender.com",
+      host: "urlchat.onrender.com",
       path: "/peerjs",
       secure: true,
       config: ICE_CONFIG,
@@ -433,7 +433,7 @@ export default function App() {
     window.history.replaceState(null, "", `?room=${upperCode}`);
 
     const p = new Peer(undefined, {
-      host: "urlchat-server.onrender.com",
+      host: "urlchat.onrender.com",
       path: "/peerjs",
       secure: true,
       config: ICE_CONFIG,
