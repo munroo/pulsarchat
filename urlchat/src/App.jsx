@@ -405,7 +405,12 @@ export default function App() {
 
     window.history.replaceState(null, "", `?room=${code}`);
 
-    const p = new Peer(code, { debug: 0, config: ICE_CONFIG });
+    const p = new Peer(code, {
+      host: "urlchat-server.onrender.com",
+      path: "/peerjs",
+      secure: true,
+      config: ICE_CONFIG,
+    });
     peerRef.current = p;
 
     p.on("connection", (c) => {
@@ -427,7 +432,12 @@ export default function App() {
     setRoomCode(upperCode);
     window.history.replaceState(null, "", `?room=${upperCode}`);
 
-    const p = new Peer(undefined, { debug: 0, config: ICE_CONFIG });
+    const p = new Peer(undefined, {
+      host: "urlchat-server.onrender.com",
+      path: "/peerjs",
+      secure: true,
+      config: ICE_CONFIG,
+    });
     peerRef.current = p;
 
     p.on("open", () => {
