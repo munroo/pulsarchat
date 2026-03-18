@@ -1,25 +1,3 @@
-const ICE_CONFIG = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-    {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
-    },
-  ],
-};
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Peer from "peerjs";
 import styles from "./App.module.css";
@@ -397,6 +375,13 @@ export default function App() {
     }
   }
 
+  async function getIceServers() {
+    const res = await fetch(
+      "https://urlchat.metered.live/api/v1/turn/credentials?apiKey=3469457bbe4c62c6be926899c183c26a8a7d",
+    );
+    return await res.json();
+  }
+
   async function createRoom() {
     destroyPeer();
     const code = generateCode();
@@ -407,12 +392,14 @@ export default function App() {
 
     // wake up render if sleeping
     await fetch("https://urlchat.onrender.com/peerjs").catch(() => {});
+    const iceServers = await getIceServers();
 
     const p = new Peer(code, {
+      // or undefined for guest
       host: "urlchat.onrender.com",
       path: "/peerjs",
       secure: true,
-      config: ICE_CONFIG,
+      config: { iceServers },
       pingInterval: 5000,
     });
     peerRef.current = p;
@@ -438,12 +425,14 @@ export default function App() {
 
     // wake up render if sleeping
     await fetch("https://urlchat.onrender.com/peerjs").catch(() => {});
+    const iceServers = await getIceServers();
 
     const p = new Peer(undefined, {
+      // or undefined for guest
       host: "urlchat.onrender.com",
       path: "/peerjs",
       secure: true,
-      config: ICE_CONFIG,
+      config: { iceServers },
       pingInterval: 5000,
     });
     peerRef.current = p;
