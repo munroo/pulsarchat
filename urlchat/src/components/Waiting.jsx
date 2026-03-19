@@ -1,6 +1,6 @@
 import styles from "../App.module.css";
 
-export default function Waiting({ roomCode, onBack, onToast }) {
+export default function Waiting({ roomCode, onBack, onToast, loading }) {
   const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
 
   function copyCode() {
@@ -14,9 +14,9 @@ export default function Waiting({ roomCode, onBack, onToast }) {
   return (
     <div className={styles.waiting}>
       <div className={styles.logo}>
-        url<span>chat</span>
+        pulsar<span>chat</span>
       </div>
-      <div className={styles.tagline}>waiting for your colleague…</div>
+      <div className={styles.tagline}>waiting for your peer…</div>
 
       <div className={styles.roomLabel}>your room code</div>
       <div
@@ -40,7 +40,7 @@ export default function Waiting({ roomCode, onBack, onToast }) {
 
       <div className={styles.listeningRow}>
         <span className={styles.pulseDot} />
-        listening for connection…
+        {loading || "listening for connection…"}
       </div>
 
       <button

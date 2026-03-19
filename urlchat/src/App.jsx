@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { usePeer } from "./hooks/usePeer";
 import { getInitialRoomCode } from "./utils/url";
+import Background from "./components/Background";
 import Lobby from "./components/Lobby";
 import Waiting from "./components/Waiting";
 import Chat from "./components/Chat";
@@ -9,9 +10,9 @@ import Toast from "./components/Toast";
 const initialCode = getInitialRoomCode();
 
 export default function App() {
-  const { screen, roomCode, conn, sharedKey, toast, actions } = usePeer();
+  const { screen, roomCode, conn, sharedKey, toast, loading, actions } =
+    usePeer();
 
-  // Auto-join if ?room= is in the URL on load
   useEffect(() => {
     if (initialCode) {
       actions.joinRoom(initialCode);
@@ -20,6 +21,7 @@ export default function App() {
 
   return (
     <>
+      <Background />
       {screen === "lobby" && (
         <Lobby
           onCreate={actions.createRoom}
@@ -32,10 +34,16 @@ export default function App() {
           roomCode={roomCode}
           onBack={actions.backToLobby}
           onToast={actions.showToast}
+          loading={loading}
         />
       )}
       {screen === "chat" && (
-        <Chat roomCode={roomCode} conn={conn} sharedKey={sharedKey} />
+        <Chat
+          roomCode={roomCode}
+          conn={conn}
+          sharedKey={sharedKey}
+          onLeave={actions.backToLobby}
+        />
       )}
       <Toast message={toast} />
     </>

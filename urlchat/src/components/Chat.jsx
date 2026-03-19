@@ -59,12 +59,12 @@ function Lightbox({ src, onClose }) {
 
 // ── Chat ───────────────────────────────────────────────
 
-export default function Chat({ roomCode, conn, sharedKey }) {
+export default function Chat({ roomCode, conn, sharedKey, onLeave }) {
   const [messages, setMessages] = useState([
     {
       id: 0,
       type: "sys",
-      text: "encrypted connection established ✦ messages are end-to-end encrypted",
+      text: "encrypted connection established \u2726 messages are end-to-end encrypted",
     },
   ]);
   const [inputVal, setInputVal] = useState("");
@@ -122,7 +122,7 @@ export default function Chat({ roomCode, conn, sharedKey }) {
       if (data.type === "typing") {
         try {
           const text = await decrypt(sharedKey, data.payload);
-          setScrollingTitle(text); // scroll peer's text in our title
+          setScrollingTitle(text);
         } catch {}
         setPeerTyping(true);
         if (document.hidden) startFlash();
@@ -167,8 +167,8 @@ export default function Chat({ roomCode, conn, sharedKey }) {
 
     const onClose = () => {
       setDisconnected(true);
-      addMsg("sys", "colleague disconnected");
-      clearUrl(roomCode);
+      addMsg("sys", "peer disconnected");
+      resetTitle();
     };
 
     conn.on("data", onData);
@@ -184,7 +184,7 @@ export default function Chat({ roomCode, conn, sharedKey }) {
   async function handleInput(e) {
     const val = e.target.value;
     setInputVal(val);
-    setScrollingTitle(val); // our title scrolls as we type
+    setScrollingTitle(val);
     if (conn?.open && sharedKey) {
       if (val) {
         const payload = await encrypt(sharedKey, val);
@@ -278,6 +278,13 @@ export default function Chat({ roomCode, conn, sharedKey }) {
     inputRef.current?.focus();
   }
 
+  // ── Leave ──────────────────────────────────────────────
+
+  function handleLeave() {
+    resetTitle();
+    onLeave();
+  }
+
   // ── Render ─────────────────────────────────────────────
 
   return (
@@ -285,6 +292,15 @@ export default function Chat({ roomCode, conn, sharedKey }) {
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
       <div className={styles.chatHeader}>
+        <button
+          className={styles.backBtn}
+          onClick={handleLeave}
+          title="leave room"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M10 2L4 8l6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <div
           className={styles.connectedDot}
           style={
@@ -297,32 +313,16 @@ export default function Chat({ roomCode, conn, sharedKey }) {
           {disconnected
             ? "disconnected"
             : peerTyping
-              ? "colleague is typing\u2026"
+              ? "peer is typing\u2026"
               : "encrypted"}
         </div>
         <div className={styles.chatRoom}>
           <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
+            width="10" height="10" viewBox="0 0 10 10" fill="none"
             style={{ marginRight: 4, opacity: 0.5 }}
           >
-            <rect
-              x="1"
-              y="3"
-              width="8"
-              height="6"
-              rx="1"
-              stroke="currentColor"
-              strokeWidth="1"
-            />
-            <path
-              d="M3 3V2a2 2 0 114 0v1"
-              stroke="currentColor"
-              strokeWidth="1"
-              strokeLinecap="round"
-            />
+            <rect x="1" y="3" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="1" />
+            <path d="M3 3V2a2 2 0 114 0v1" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
           </svg>
           {roomCode}
         </div>
@@ -330,23 +330,10 @@ export default function Chat({ roomCode, conn, sharedKey }) {
 
       <div className={styles.urlBarHint}>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <rect
-            x="1"
-            y="2"
-            width="10"
-            height="8"
-            rx="1.5"
-            stroke="currentColor"
-            strokeWidth="1"
-          />
-          <path
-            d="M3 5h6M3 7h4"
-            stroke="currentColor"
-            strokeWidth="1"
-            strokeLinecap="round"
-          />
+          <rect x="1" y="2" width="10" height="8" rx="1.5" stroke="currentColor" strokeWidth="1" />
+          <path d="M3 5h6M3 7h4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
         </svg>
-        watch the tab title &middot; made by //tedDev
+        watch the tab title
       </div>
 
       {/* Messages */}
@@ -409,22 +396,10 @@ export default function Chat({ roomCode, conn, sharedKey }) {
             title="emoji"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <circle
-                cx="9"
-                cy="9"
-                r="7.5"
-                stroke="currentColor"
-                strokeWidth="1.2"
-              />
+              <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.2" />
               <circle cx="6.5" cy="7.5" r="1" fill="currentColor" />
               <circle cx="11.5" cy="7.5" r="1" fill="currentColor" />
-              <path
-                d="M6 11.5c.8 1.2 2.2 1.8 3 1.8s2.2-.6 3-1.8"
-                stroke="currentColor"
-                strokeWidth="1.1"
-                strokeLinecap="round"
-                fill="none"
-              />
+              <path d="M6 11.5c.8 1.2 2.2 1.8 3 1.8s2.2-.6 3-1.8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" fill="none" />
             </svg>
           </button>
           {showEmoji && (
@@ -449,30 +424,9 @@ export default function Chat({ roomCode, conn, sharedKey }) {
           title="send image"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-            <rect
-              x="2"
-              y="3"
-              width="14"
-              height="12"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="1.2"
-            />
-            <circle
-              cx="6.5"
-              cy="7.5"
-              r="1.5"
-              stroke="currentColor"
-              strokeWidth="1"
-            />
-            <path
-              d="M2 13l4-4 3 3 2-2 5 4"
-              stroke="currentColor"
-              strokeWidth="1.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
+            <rect x="2" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" />
+            <circle cx="6.5" cy="7.5" r="1.5" stroke="currentColor" strokeWidth="1" />
+            <path d="M2 13l4-4 3 3 2-2 5 4" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
           </svg>
         </button>
 
