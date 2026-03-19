@@ -1,16 +1,15 @@
-const ICON_NORMAL = makeFavicon("#6ee7b7");
-const ICON_ALERT = makeFavicon("#f87171");
+const ICON_NORMAL = "/favicon.png";
+const ICON_ALERT  = makeFavicon("#f87171");
 let flashTimer = null;
 let scrollTimer = null;
 let scrollText = "";
 let scrollPos = 0;
 
-const APP_TITLE = "urlchat";
+const APP_TITLE = "pulsarchat";
 
 function makeFavicon(color) {
   const c = document.createElement("canvas");
-  c.width = 32;
-  c.height = 32;
+  c.width = 32; c.height = 32;
   const ctx = c.getContext("2d");
   ctx.beginPath();
   ctx.arc(16, 16, 12, 0, Math.PI * 2);
@@ -56,8 +55,7 @@ export function setScrollingTitle(text) {
     return;
   }
 
-  // If same text just growing (user typing), update without restarting
-  const padded = text + "   ·   ";
+  const padded = text + "   \u00b7   ";
   if (scrollTimer && scrollText === padded) return;
 
   scrollText = padded;
@@ -65,14 +63,12 @@ export function setScrollingTitle(text) {
 
   if (!scrollTimer) {
     scrollTimer = setInterval(() => {
-      const rotated =
-        scrollText.slice(scrollPos) + scrollText.slice(0, scrollPos);
+      const rotated = scrollText.slice(scrollPos) + scrollText.slice(0, scrollPos);
       document.title = rotated;
       scrollPos = (scrollPos + 1) % scrollText.length;
     }, 250);
   }
 
-  // Also show immediately without waiting for interval
   document.title = text;
 }
 
