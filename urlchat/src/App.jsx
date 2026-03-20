@@ -1,17 +1,29 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePeer } from "./hooks/usePeer";
+import { useNotify } from "./hooks/useNotify";
 import { getInitialRoomCode } from "./utils/url";
 import Background from "./components/Background";
 import Lobby from "./components/Lobby";
 import Waiting from "./components/Waiting";
 import Chat from "./components/Chat";
+import Contacts from "./components/Contacts";
 import Toast from "./components/Toast";
+import styles from "./App.module.css";
 
 const initialCode = getInitialRoomCode();
 
 export default function App() {
   const { screen, roomCode, conn, sharedKey, toast, loading, actions } =
     usePeer();
+  const notify = useNotify();
+
+  // Track which screen the lobby-level nav is showing
+  // "lobby" | "contacts" — the peer screens (waiting/chat) take priority
+  const [lobbyView, setLobbyView] = useState("lobby");
+
+  // When a ping is sent, remember the target so we can fire it once
+  // the room code is known (after createRoom resolves)
+  const [pendingPingTarget, setPendingPingTarget] = useState(null);
 
   useEffect(() => {
     if (initialCode) {
@@ -19,17 +31,56 @@ export default function App() {
     }
   }, []);
 
+  // As soon as we're in the waiting screen with a room code and a pending
+  // ping target, send the ping and clear the target
+  useEffect(() => {
+    if (screen === "waiting" && roomCode && pendingPingTarget) {
+      notify.sendPing(pendingPingTarget.handle, notify.handle, roomCode);
+      setPendingPingTarget(null);
+    }
+  }, [screen, roomCode, pendingPingTarget]);
+
+  function handlePingContact(contact) {
+    setPendingPingTarget(contact);
+    setLobbyView("lobby");
+    actions.createRoom();
+  }
+
+  function handleIncomingJoin() {
+    if (!notify.incomingPing) return;
+    const room = notify.incomingPing.room;
+    notify.dismissPing();
+    actions.joinRoom(room);
+  }
+
+  // Peer screens override the lobby-level nav
+  const activePeerScreen = screen !== "lobby" ? screen : null;
+  const showLobby = !activePeerScreen && lobbyView === "lobby";
+  const showContacts = !activePeerScreen && lobbyView === "contacts";
+
   return (
     <>
       <Background />
-      {screen === "lobby" && (
+
+      {showLobby && (
         <Lobby
           onCreate={actions.createRoom}
           onJoin={actions.joinRoom}
+          onContacts={() => setLobbyView("contacts")}
           initialCode={initialCode}
         />
       )}
-      {screen === "waiting" && (
+
+      {showContacts && (
+        <Contacts
+          onBack={() => setLobbyView("lobby")}
+          onPingContact={handlePingContact}
+          notify={notify}
+          onToast={actions.showToast}
+        />
+      )}
+
+      {activePeerScreen === "waiting" && (
         <Waiting
           roomCode={roomCode}
           onBack={actions.backToLobby}
@@ -37,7 +88,8 @@ export default function App() {
           loading={loading}
         />
       )}
-      {screen === "chat" && (
+
+      {activePeerScreen === "chat" && (
         <Chat
           roomCode={roomCode}
           conn={conn}
@@ -45,7 +97,47 @@ export default function App() {
           onLeave={actions.backToLobby}
         />
       )}
+
       <Toast message={toast} />
+
+      {/* ── Incoming ping modal ──────────────────────── */}
+      {notify.incomingPing && (
+        <div className={styles.pingOverlay}>
+          <div className={styles.pingCard}>
+            <div className={styles.pingIcon}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div className={styles.pingTitle}>
+              <span className={styles.pingFrom}>
+                {notify.incomingPing.from}
+              </span>{" "}
+              wants to chat
+            </div>
+            <p className={styles.pingSubtitle}>
+              room&nbsp;·&nbsp;{notify.incomingPing.room}
+            </p>
+            <div className={styles.pingActions}>
+              <button
+                className={`${styles.btn} ${styles.btnGhost}`}
+                onClick={notify.dismissPing}
+              >
+                ignore
+              </button>
+              <button className={styles.btn} onClick={handleIncomingJoin}>
+                join
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

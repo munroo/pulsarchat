@@ -1,0 +1,158 @@
+import { useState, useEffect } from "react";
+import { getContacts, addContact, deleteContact } from "../utils/contacts";
+import styles from "../App.module.css";
+
+export default function Contacts({ onBack, onPingContact, notify, onToast }) {
+  const [contacts, setContacts] = useState([]);
+  const [handleInput, setHandleInput] = useState("");
+  const [nickInput, setNickInput] = useState("");
+
+  useEffect(() => {
+    loadContacts();
+  }, []);
+
+  // Refresh online status whenever the contact list changes
+  useEffect(() => {
+    if (contacts.length > 0) {
+      notify.queryStatus(contacts.map((c) => c.handle));
+    }
+  }, [contacts]);
+
+  async function loadContacts() {
+    const list = await getContacts();
+    setContacts(list);
+  }
+
+  async function handleAdd() {
+    const h = handleInput.trim().toUpperCase();
+    if (h.length < 4) return;
+    await addContact(h, nickInput.trim() || h);
+    setHandleInput("");
+    setNickInput("");
+    loadContacts();
+  }
+
+  async function handleDelete(h) {
+    await deleteContact(h);
+    loadContacts();
+  }
+
+  function copyHandle() {
+    navigator.clipboard
+      .writeText(notify.handle || "")
+      .then(() => onToast("handle copied"));
+  }
+
+  return (
+    <div className={styles.contactsWrap}>
+      {/* ── Header ───────────────────────────────────── */}
+      <div className={styles.contactsHeader}>
+        <button className={styles.backBtn} onClick={onBack} title="back">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M10 3L5 8l5 5"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <span className={styles.chatTitle}>contacts</span>
+      </div>
+
+      <div className={styles.contactsBody}>
+        {/* ── My handle ────────────────────────────────── */}
+        <div className={styles.myHandleBlock}>
+          <span className={styles.handleLabel}>your handle</span>
+          <button
+            className={styles.handleDisplay}
+            onClick={copyHandle}
+            title="tap to copy"
+          >
+            {notify.handle || "…"}
+          </button>
+          <span className={styles.handleHint}>
+            tap to copy · share this so contacts can ping you
+          </span>
+        </div>
+
+        {/* ── Add contact ──────────────────────────────── */}
+        <div className={styles.addContactBlock}>
+          <h3 className={styles.addContactTitle}>add contact</h3>
+          <input
+            className={styles.contactInput}
+            placeholder="handle (e.g. NOVA-3KF8)"
+            value={handleInput}
+            onChange={(e) => setHandleInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+          <input
+            className={styles.contactInput}
+            placeholder="nickname (optional)"
+            value={nickInput}
+            onChange={(e) => setNickInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+          <button className={styles.btn} onClick={handleAdd}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path
+                d="M6 1v10M1 6h10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            add
+          </button>
+        </div>
+
+        {/* ── Contact list ─────────────────────────────── */}
+        {contacts.length === 0 ? (
+          <p className={styles.emptyContacts}>no contacts yet</p>
+        ) : (
+          <div className={styles.contactsList}>
+            {contacts.map((c) => (
+              <div key={c.handle} className={styles.contactItem}>
+                <span
+                  className={
+                    notify.onlineHandles.has(c.handle)
+                      ? styles.dotOnline
+                      : styles.dotOffline
+                  }
+                />
+                <div className={styles.contactInfo}>
+                  <span className={styles.contactNick}>{c.nickname}</span>
+                  <span className={styles.contactHandle}>{c.handle}</span>
+                </div>
+                <div className={styles.contactActions}>
+                  <button
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    onClick={() => onPingContact(c)}
+                    style={{ width: "auto", padding: "6px 14px" }}
+                  >
+                    ping
+                  </button>
+                  <button
+                    className={styles.iconBtn}
+                    onClick={() => handleDelete(c.handle)}
+                    title="remove contact"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path
+                        d="M2 2l10 10M12 2L2 12"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

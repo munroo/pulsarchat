@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import PulsarLogo from "./PulsarLogo";
 import styles from "../App.module.css";
 
-export default function Lobby({ onCreate, onJoin, initialCode }) {
+export default function Lobby({ onCreate, onJoin, onContacts, initialCode }) {
   const [code, setCode] = useState(initialCode || "");
   const infoRef = useRef(null);
 
@@ -65,6 +65,19 @@ export default function Lobby({ onCreate, onJoin, initialCode }) {
             </button>
           </div>
         </div>
+
+        <button className={styles.contactsBtn} onClick={onContacts}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          contacts
+        </button>
 
         <button className={styles.learnMore} onClick={scrollToInfo}>
           how does it work?

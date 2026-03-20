@@ -117,6 +117,7 @@ export function usePeer() {
   const [conn, setConn] = useState(null);
   const [sharedKey, setSharedKey] = useState(null);
   const [toast, setToast] = useState("");
+  const [loading, setLoading] = useState("");
   const peerRef = useRef(null);
 
   function showToast(msg) {
@@ -136,9 +137,11 @@ export function usePeer() {
     const code = generateCode();
     setRoomCode(code);
     setScreen("waiting");
+    setLoading("waking up server…");
     window.history.replaceState(null, "", `?room=${code}`);
 
     await wakeServer();
+    setLoading("fetching credentials…");
 
     let iceServers = [];
     try {
@@ -147,14 +150,19 @@ export function usePeer() {
       iceServers = [];
     }
 
+    setLoading("");
     const p = makePeer(code, iceServers);
     peerRef.current = p;
 
     p.on("connection", (c) => {
       setConn(c);
+      setLoading("encrypting connection…");
       c.on("open", () => {
         performHandshake(c, setSharedKey)
-          .then(() => setScreen("chat"))
+          .then(() => {
+            setLoading("");
+            setScreen("chat");
+          })
           .catch((err) => {
             console.error("Handshake failed (host):", err);
             showToast(err.message || "encryption handshake failed");
@@ -177,9 +185,11 @@ export function usePeer() {
     const upper = code.toUpperCase();
     setRoomCode(upper);
     setScreen("waiting");
+    setLoading("waking up server…");
     window.history.replaceState(null, "", `?room=${upper}`);
 
     await wakeServer();
+    setLoading("connecting…");
 
     let iceServers = [];
     try {
@@ -192,12 +202,17 @@ export function usePeer() {
     peerRef.current = p;
 
     p.on("open", () => {
+      setLoading("joining room…");
       const c = p.connect(upper, { reliable: true });
       setConn(c);
 
       c.on("open", () => {
+        setLoading("encrypting connection…");
         performHandshake(c, setSharedKey)
-          .then(() => setScreen("chat"))
+          .then(() => {
+            setLoading("");
+            setScreen("chat");
+          })
           .catch((err) => {
             console.error("Handshake failed (guest):", err);
             showToast(err.message || "encryption handshake failed");
@@ -234,6 +249,7 @@ export function usePeer() {
     conn,
     sharedKey,
     toast,
+    loading,
     actions: { createRoom, joinRoom, backToLobby, showToast },
   };
 }
