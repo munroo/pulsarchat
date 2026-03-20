@@ -312,7 +312,7 @@
 
 .pulsarLogoWrap {
   position: absolute;
-  top: 60px;
+  top: 0%;
   left: 50%;
   transform: translateX(-50%);
   z-index: 0;

@@ -154,7 +154,14 @@ export function usePeer() {
     const p = makePeer(code, iceServers);
     peerRef.current = p;
 
+    let connected = false;
+
     p.on("connection", (c) => {
+      if (connected) {
+        c.close();
+        return;
+      }
+      connected = true;
       setConn(c);
       setLoading("encrypting connection…");
       c.on("open", () => {
@@ -166,6 +173,7 @@ export function usePeer() {
           .catch((err) => {
             console.error("Handshake failed (host):", err);
             showToast(err.message || "encryption handshake failed");
+            connected = false;
           });
       });
     });
