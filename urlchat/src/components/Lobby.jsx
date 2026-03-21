@@ -2,7 +2,13 @@ import { useState, useRef } from "react";
 import PulsarLogo from "./PulsarLogo";
 import styles from "../App.module.css";
 
-export default function Lobby({ onCreate, onJoin, initialCode }) {
+export default function Lobby({
+  onCreate,
+  onJoin,
+  onContacts,
+  onLegal,
+  initialCode,
+}) {
   const [code, setCode] = useState(initialCode || "");
   const infoRef = useRef(null);
 
@@ -22,9 +28,9 @@ export default function Lobby({ onCreate, onJoin, initialCode }) {
         <div className={styles.pulsarLogoWrap}>
           <PulsarLogo size={250} />
         </div>
-        <div className={styles.logo}>
-          pulsar<span>chat</span>
-        </div>
+        <h1 className={styles.logo}>
+          Pulsar<span>chat</span>
+        </h1>
         <div className={styles.tagline}>
           encrypted peer-to-peer chat · no accounts · no logs · no trace
         </div>
@@ -66,6 +72,19 @@ export default function Lobby({ onCreate, onJoin, initialCode }) {
           </div>
         </div>
 
+        <button className={styles.contactsBtn} onClick={onContacts}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          contacts
+        </button>
+
         <button className={styles.learnMore} onClick={scrollToInfo}>
           how does it work?
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -83,7 +102,7 @@ export default function Lobby({ onCreate, onJoin, initialCode }) {
       {/* ── Info sections ─────────────────────────────── */}
       <div className={styles.infoSections} ref={infoRef}>
         {/* How it works */}
-        <div className={styles.infoBlock}>
+        <section className={styles.infoBlock}>
           <div className={styles.infoIcon}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path
@@ -128,10 +147,10 @@ export default function Lobby({ onCreate, onJoin, initialCode }) {
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Security */}
-        <div className={styles.infoBlock}>
+        <section className={styles.infoBlock}>
           <div className={styles.infoIcon}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <rect
@@ -183,10 +202,10 @@ export default function Lobby({ onCreate, onJoin, initialCode }) {
               </p>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* The tab title feature */}
-        <div className={styles.infoBlock}>
+        <section className={styles.infoBlock}>
           <div className={styles.infoIcon}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <rect
@@ -212,10 +231,13 @@ export default function Lobby({ onCreate, onJoin, initialCode }) {
             title. You can see what they're writing without even switching tabs
             — perfect for discreet conversations at work.
           </p>
-        </div>
+        </section>
 
         <div className={styles.footer}>
-          pulsarchat &middot; made by //tedDev
+          pulsarchat &middot; made by //tedDev &middot;{" "}
+          <button className={styles.legalLink} onClick={onLegal}>
+            terms &amp; privacy
+          </button>
         </div>
       </div>
     </div>

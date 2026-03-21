@@ -13,11 +13,16 @@ export default function Background() {
     const ctx = canvas.getContext("2d");
     let animId;
     let stars = [];
+    let prevWidth = 0;
 
     function resize() {
-      canvas.width = window.innerWidth;
+      const newWidth = window.innerWidth;
       canvas.height = window.innerHeight;
-      initStars();
+      if (newWidth !== prevWidth) {
+        canvas.width = newWidth;
+        prevWidth = newWidth;
+        initStars();
+      }
     }
 
     function initStars() {
@@ -95,6 +100,7 @@ export default function Background() {
         inset: 0,
         zIndex: 0,
         pointerEvents: "none",
+        willChange: "transform",
       }}
     />
   );

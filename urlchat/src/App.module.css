@@ -5,6 +5,7 @@
   font-weight: 300;
   letter-spacing: -0.5px;
   color: var(--muted);
+  margin: 0;
 }
 .logo span {
   color: var(--accent);
@@ -312,9 +313,9 @@
 
 .pulsarLogoWrap {
   position: absolute;
-  top: 60px;
+  top: 0%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) rotate(35deg);
   z-index: 0;
   opacity: 0.7;
   pointer-events: none;
@@ -336,7 +337,8 @@
     grid-template-columns: 1fr;
   }
   .pulsarLogoWrap {
-    top: -50px;
+    top: -30px;
+    transform: translateX(-50%) rotate(35deg) scale(0.5);
   }
 }
 
@@ -491,18 +493,6 @@
   border: 1px solid var(--border);
 }
 
-.urlBarHint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px;
-  font-size: 11px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -625,6 +615,19 @@
 }
 .msgInput:focus {
   border-color: var(--accent-dim);
+}
+.msgInput::-webkit-scrollbar {
+  width: 3px;
+}
+.msgInput::-webkit-scrollbar-track {
+  background: transparent;
+}
+.msgInput::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+.msgInput::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 .iconBtn {
@@ -778,4 +781,542 @@
   max-height: 90vh;
   border-radius: 8px;
   object-fit: contain;
+}
+
+/* ─── Contacts screen ────────────────────────────────── */
+
+.contactsWrap {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.contactsHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.contactsBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ── My handle block ────────────────────────────────── */
+
+.myHandleBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.handleLabel {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.handleDisplay {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: opacity 0.15s;
+}
+.handleDisplay:hover {
+  opacity: 0.7;
+}
+
+.handleHint {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ── Add contact block ──────────────────────────────── */
+
+.addContactBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.addContactTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
+}
+
+.contactInput {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.contactInput:focus {
+  border-color: var(--accent);
+}
+
+/* ── Contact list ───────────────────────────────────── */
+
+.emptyContacts {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 32px 0;
+}
+
+.contactsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.contactItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.dotOnline {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent-dim);
+}
+
+.dotOffline {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.contactInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.contactNick {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contactHandle {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.contactActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Ping modal (incoming ping overlay) ─────────────── */
+
+.pingOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: 24px;
+}
+
+.pingCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 320px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+}
+
+.pingIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.pingTitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: center;
+}
+
+.pingFrom {
+  color: var(--accent);
+}
+
+.pingSubtitle {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin-top: -8px;
+}
+
+.pingActions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.pingActions .btn {
+  flex: 1;
+}
+
+/* ── Contacts button in lobby ───────────────────────── */
+
+.contactsBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+.contactsBtn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── Legal link in footer ───────────────────────────── */
+
+.legalLink {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+.legalLink:hover {
+  color: var(--accent);
+}
+
+/* ─── Legal page ─────────────────────────────────────── */
+
+.legalWrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+.legalInner {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+
+.legalHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 40px;
+}
+
+.legalHeaderTitle {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.legalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.legalSection h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+
+.legalSection p {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.7;
+  margin-bottom: 14px;
+}
+
+.legalSection p:last-child {
+  margin-bottom: 0;
+}
+
+/* ─── Animations ─────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pickerIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Screen fade-ins */
+.lobby {
+  animation: fadeIn 0.25s ease-out;
+}
+.chatWrap {
+  animation: fadeIn 0.25s ease-out;
+}
+.waiting {
+  animation: fadeIn 0.25s ease-out;
+}
+.contactsWrap {
+  animation: fadeIn 0.25s ease-out;
+}
+.legalWrap {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Message entrance */
+.msg {
+  animation: messageIn 0.2s ease-out;
+}
+
+/* Emoji picker */
+.emojiPicker {
+  animation: pickerIn 0.15s ease-out;
+}
+
+/* Lightbox */
+.lightbox {
+  animation: fadeIn 0.2s ease-out;
+}
+.lightbox img {
+  animation: zoomIn 0.2s ease-out;
+}
+
+/* Ping card */
+.pingCard {
+  animation: cardIn 0.2s ease-out;
+}
+
+/* Send button press */
+.sendBtn {
+  transition:
+    opacity 0.15s,
+    transform 0.1s;
+}
+.sendBtn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+/* Bubble hover */
+.bubble {
+  transition: background 0.15s;
+}
+
+/* ── Reply ──────────────────────────────────────────── */
+
+.msgBubbleWrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.replyBtn {
+  position: absolute;
+  top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+  z-index: 1;
+}
+.replyBtn:hover {
+  color: var(--accent);
+  background: var(--surface2);
+}
+.mine .replyBtn {
+  right: calc(100% + 4px);
+}
+.theirs .replyBtn {
+  left: calc(100% + 4px);
+}
+
+.replyQuote {
+  font-size: 11px;
+  color: var(--muted);
+  border-left: 2px solid var(--accent);
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  border-radius: 0 4px 4px 0;
+  background: rgba(0, 0, 0, 0.2);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mine .replyQuote {
+  border-left-color: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.replyPreview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  animation: slideDown 0.15s ease-out;
+}
+
+.replyPreviewText {
+  flex: 1;
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
