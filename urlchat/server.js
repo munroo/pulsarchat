@@ -72,22 +72,9 @@ server.on("upgrade", (req, socket, head) => {
       wss.emit("connection", ws, handle);
     });
   } else if (pathname.startsWith("/peerjs")) {
-    // Find PeerJS's internal WebSocket server (property name varies by version)
-    const peerWss =
-      peerServer._wss ||
-      peerServer.__wss ||
-      peerServer._server?._webSocketServer;
-    if (peerWss) {
-      peerWss.handleUpgrade(req, socket, head, (ws) => {
-        peerWss.emit("connection", ws, req);
-      });
-    } else {
-      console.error(
-        "[peerjs] Could not find internal WSS. Keys:",
-        Object.getOwnPropertyNames(peerServer),
-      );
-      socket.destroy();
-    }
+    // PeerJS attaches its own ws upgrade listener to dummyServer.
+    // Forward the upgrade event there so ws handles it directly.
+    dummyServer.emit("upgrade", req, socket, head);
   } else {
     socket.destroy();
   }
