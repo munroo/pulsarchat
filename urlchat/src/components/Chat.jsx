@@ -8,6 +8,7 @@ import {
   resetTitle,
 } from "../utils/notify";
 import { compressImage } from "../utils/image";
+import { handleShare } from "../utils/share";
 import EMOJI from "../utils/emoji";
 import styles from "../App.module.css";
 
@@ -59,7 +60,7 @@ function Lightbox({ src, onClose }) {
 
 // ── Chat ───────────────────────────────────────────────
 
-export default function Chat({ roomCode, conn, sharedKey, onLeave }) {
+export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   const [messages, setMessages] = useState([
     {
       id: 0,
@@ -81,7 +82,6 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave }) {
   const cameraInputRef = useRef(null);
   const msgIdRef = useRef(1);
   const imgBufferRef = useRef({});
-  const longPressTimerRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -328,18 +328,19 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave }) {
     inputRef.current?.focus();
   }
 
-  function handleMsgTouchStart(msgId) {
-    longPressTimerRef.current = setTimeout(() => {
-      setHoveredMsgId(msgId);
-    }, 500);
+  function handleMsgClick(msgId) {
+    setHoveredMsgId((prev) => (prev === msgId ? null : msgId));
   }
 
-  function handleMsgTouchMove() {
-    clearTimeout(longPressTimerRef.current);
-  }
+  // ── Share ──────────────────────────────────────────────
 
-  function handleMsgTouchEnd() {
-    clearTimeout(longPressTimerRef.current);
+  function shareRoom() {
+    handleShare(
+      "pulsarchat",
+      `Join my encrypted chat room: ${roomCode}`,
+      `https://pulsarchat.space/?room=${roomCode}`,
+      onToast,
+    );
   }
 
   // ── Leave ──────────────────────────────────────────────
@@ -412,6 +413,28 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave }) {
           </svg>
           {roomCode}
         </div>
+        <button
+          className={styles.iconBtn}
+          onClick={shareRoom}
+          title="share room"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M8 1v8M5.5 3.5L8 1l2.5 2.5"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M3 9v5h10V9"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
       </div>
 
       {/* Messages */}
@@ -439,19 +462,19 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave }) {
               className={`${styles.msg} ${isMine ? styles.mine : styles.theirs}`}
               onMouseEnter={() => setHoveredMsgId(msg.id)}
               onMouseLeave={() => setHoveredMsgId(null)}
-              onTouchStart={() => handleMsgTouchStart(msg.id)}
-              onTouchMove={handleMsgTouchMove}
-              onTouchEnd={handleMsgTouchEnd}
+              onClick={() => handleMsgClick(msg.id)}
             >
               <div className={styles.msgBubbleWrap}>
                 {isHovered && (
                   <button
                     className={styles.replyBtn}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={() => handleReply(msg)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReply(msg);
+                    }}
                     title="reply"
                   >
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
                       <path
                         d="M1 5l3.5-3v1.8C8 3.8 10 5 10 8c-.8-2-2.5-2.8-5.5-2.8V7L1 5z"
                         stroke="currentColor"
@@ -465,8 +488,8 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave }) {
                 {msg.replyTo && (
                   <div className={styles.replyQuote}>
                     {msg.replyTo.text
-                      ? msg.replyTo.text.slice(0, 60) +
-                        (msg.replyTo.text.length > 60 ? "\u2026" : "")
+                      ? msg.replyTo.text.slice(0, 80) +
+                        (msg.replyTo.text.length > 80 ? "\u2026" : "")
                       : "\uD83D\uDCF7 image"}
                   </div>
                 )}

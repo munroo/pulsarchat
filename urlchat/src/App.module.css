@@ -1255,50 +1255,47 @@
 
 .replyBtn {
   position: absolute;
-  top: 2px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface2);
   color: var(--muted);
   cursor: pointer;
   transition:
     color 0.15s,
     background 0.15s;
   z-index: 1;
+  flex-shrink: 0;
 }
 .replyBtn:hover {
   color: var(--accent);
-  background: var(--surface2);
+  background: var(--surface);
 }
 .mine .replyBtn {
-  right: calc(100% + 4px);
+  right: calc(100% + 2px);
 }
 .theirs .replyBtn {
-  left: calc(100% + 4px);
+  left: calc(100% + 2px);
 }
 
 .replyQuote {
   font-size: 11px;
   color: var(--muted);
   border-left: 2px solid var(--accent);
-  padding: 3px 8px;
+  padding: 4px 10px;
   margin-bottom: 4px;
-  border-radius: 0 4px 4px 0;
-  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.mine .replyQuote {
-  border-left-color: rgba(0, 0, 0, 0.35);
-  background: rgba(0, 0, 0, 0.15);
-  color: rgba(0, 0, 0, 0.55);
 }
 
 .replyPreview {
@@ -1319,4 +1316,144 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ─── Feedback page ──────────────────────────────────── */
+
+.feedbackWrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.feedbackInner {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+}
+
+.feedbackCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedbackCard form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedbackToggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.feedbackToggleBtn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.feedbackToggleBtn:hover {
+  color: var(--text);
+}
+.feedbackToggleBtn + .feedbackToggleBtn {
+  border-left: 1px solid var(--border);
+}
+
+.feedbackToggleActive {
+  background: var(--accent);
+  color: #000;
+}
+.feedbackToggleActive:hover {
+  color: #000;
+}
+
+.feedbackTextarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.feedbackTextarea:focus {
+  border-color: var(--accent-dim);
+}
+
+.feedbackInput {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  letter-spacing: normal;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+.feedbackInput:focus {
+  border-color: var(--accent);
+}
+.feedbackInput::placeholder {
+  color: var(--muted);
+}
+
+/* ─── Floating feedback button ───────────────────────── */
+
+.floatingFeedback {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 50;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+.floatingFeedback:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface2);
 }

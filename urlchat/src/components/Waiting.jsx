@@ -1,7 +1,8 @@
+import { handleShare } from "../utils/share";
 import styles from "../App.module.css";
 
 export default function Waiting({ roomCode, onBack, onToast, loading }) {
-  const shareUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
+  const shareUrl = `https://pulsarchat.space/?room=${roomCode}`;
 
   function copyCode() {
     navigator.clipboard.writeText(roomCode).then(() => onToast("code copied!"));
@@ -9,6 +10,15 @@ export default function Waiting({ roomCode, onBack, onToast, loading }) {
 
   function copyUrl() {
     navigator.clipboard.writeText(shareUrl).then(() => onToast("link copied!"));
+  }
+
+  function shareRoom() {
+    handleShare(
+      "pulsarchat",
+      `Join my encrypted chat room: ${roomCode}`,
+      shareUrl,
+      onToast,
+    );
   }
 
   return (
@@ -19,12 +29,36 @@ export default function Waiting({ roomCode, onBack, onToast, loading }) {
       <div className={styles.tagline}>waiting for your peer…</div>
 
       <div className={styles.roomLabel}>your room code</div>
-      <div
-        className={styles.roomCodeDisplay}
-        onClick={copyCode}
-        title="click to copy"
-      >
-        {roomCode}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          className={styles.roomCodeDisplay}
+          onClick={copyCode}
+          title="click to copy"
+        >
+          {roomCode}
+        </div>
+        <button
+          className={styles.iconBtn}
+          onClick={shareRoom}
+          title="share room"
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path
+              d="M9 2v9M6.5 4.5L9 2l2.5 2.5"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M3 11v5h12v-5"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
       </div>
 
       <div className={styles.copyHint}>

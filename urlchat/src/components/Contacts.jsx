@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getContacts, addContact, deleteContact } from "../utils/contacts";
+import { handleShare } from "../utils/share";
 import styles from "../App.module.css";
 
 export default function Contacts({ onBack, onPingContact, notify, onToast }) {
@@ -43,6 +44,15 @@ export default function Contacts({ onBack, onPingContact, notify, onToast }) {
       .then(() => onToast("handle copied"));
   }
 
+  function shareHandle() {
+    handleShare(
+      "pulsarchat",
+      `Add me on pulsarchat! My handle: ${notify.handle || ""}`,
+      "https://pulsarchat.space",
+      onToast,
+    );
+  }
+
   return (
     <div className={styles.contactsWrap}>
       {/* ── Header ───────────────────────────────────── */}
@@ -65,13 +75,37 @@ export default function Contacts({ onBack, onPingContact, notify, onToast }) {
         {/* ── My handle ────────────────────────────────── */}
         <div className={styles.myHandleBlock}>
           <span className={styles.handleLabel}>your handle</span>
-          <button
-            className={styles.handleDisplay}
-            onClick={copyHandle}
-            title="tap to copy"
-          >
-            {notify.handle || "…"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              className={styles.handleDisplay}
+              onClick={copyHandle}
+              title="tap to copy"
+            >
+              {notify.handle || "…"}
+            </button>
+            <button
+              className={styles.iconBtn}
+              onClick={shareHandle}
+              title="share handle"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M8 1v8M5.5 3.5L8 1l2.5 2.5"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M3 9v5h10V9"
+                  stroke="currentColor"
+                  strokeWidth="1.3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
           <span className={styles.handleHint}>
             tap to copy · share this so contacts can ping you
           </span>
