@@ -2,7 +2,13 @@ import { useState, useRef } from "react";
 import PulsarLogo from "./PulsarLogo";
 import styles from "../App.module.css";
 
-export default function Lobby({ onCreate, onJoin, onContacts, onLegal, initialCode }) {
+export default function Lobby({
+  onCreate,
+  onJoin,
+  onContacts,
+  onLegal,
+  initialCode,
+}) {
   const [code, setCode] = useState(initialCode || "");
   const infoRef = useRef(null);
 
@@ -23,7 +29,7 @@ export default function Lobby({ onCreate, onJoin, onContacts, onLegal, initialCo
           <PulsarLogo size={250} />
         </div>
         <h1 className={styles.logo}>
-          pulsar<span>chat</span>
+          Pulsar<span>chat</span>
         </h1>
         <div className={styles.tagline}>
           encrypted peer-to-peer chat · no accounts · no logs · no trace
