@@ -7,6 +7,7 @@ import Lobby from "./components/Lobby";
 import Waiting from "./components/Waiting";
 import Chat from "./components/Chat";
 import Contacts from "./components/Contacts";
+import Legal from "./components/Legal";
 import Toast from "./components/Toast";
 import styles from "./App.module.css";
 
@@ -57,6 +58,7 @@ export default function App() {
   const activePeerScreen = screen !== "lobby" ? screen : null;
   const showLobby = !activePeerScreen && lobbyView === "lobby";
   const showContacts = !activePeerScreen && lobbyView === "contacts";
+  const showLegal = !activePeerScreen && lobbyView === "legal";
 
   return (
     <>
@@ -67,8 +69,13 @@ export default function App() {
           onCreate={actions.createRoom}
           onJoin={actions.joinRoom}
           onContacts={() => setLobbyView("contacts")}
+          onLegal={() => setLobbyView("legal")}
           initialCode={initialCode}
         />
+      )}
+
+      {showLegal && (
+        <Legal onBack={() => setLobbyView("lobby")} />
       )}
 
       {showContacts && (

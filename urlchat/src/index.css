@@ -29,6 +29,7 @@ body,
     "SF Mono", "Fira Code", "JetBrains Mono", ui-monospace, monospace;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
+  overflowx: hidden;
 }
 
 #root {
