@@ -8,11 +8,12 @@ const port = process.env.PORT || 9000;
 const app = express();
 const server = createServer(app);
 
-// ── PeerJS (attached to the real server — handles its own upgrades) ──
-const peerServer = ExpressPeerServer(server, { path: "/", proxied: true });
+// ── PeerJS (uses Express middleware only, no auto-upgrade) ──
+const dummyServer = createServer();
+const peerServer = ExpressPeerServer(dummyServer, { path: "/", proxied: true });
 app.use("/peerjs", peerServer);
 
-// ── Notification WebSocket (noServer — we manually upgrade only /notify) ──
+// ── Notification WebSocket ──────────────────────────────────
 const handles = new Map();
 const wss = new WebSocketServer({ noServer: true });
 
@@ -35,6 +36,8 @@ wss.on("connection", (ws, handle) => {
           JSON.stringify({ type: "ping", from: msg.from, room: msg.room }),
         );
         console.log(`[ping] ${msg.from} → ${msg.to} room=${msg.room}`);
+      } else {
+        console.log(`[ping] ${msg.from} → ${msg.to} (offline)`);
       }
     } else if (msg.type === "status") {
       const online = (msg.handles || []).filter((h) => {
@@ -55,7 +58,7 @@ wss.on("connection", (ws, handle) => {
   });
 });
 
-// ── Intercept ONLY /notify upgrades — let PeerJS handle everything else ──
+// ── Single upgrade handler — we control all WebSocket upgrades ──
 server.on("upgrade", (req, socket, head) => {
   const { pathname, query } = parse(req.url, true);
 
@@ -68,13 +71,29 @@ server.on("upgrade", (req, socket, head) => {
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, handle);
     });
-    // Don't destroy socket, don't call anything else — just return
+  } else if (pathname.startsWith("/peerjs")) {
+    // Find PeerJS's internal WebSocket server (property name varies by version)
+    const peerWss =
+      peerServer._wss ||
+      peerServer.__wss ||
+      peerServer._server?._webSocketServer;
+    if (peerWss) {
+      peerWss.handleUpgrade(req, socket, head, (ws) => {
+        peerWss.emit("connection", ws, req);
+      });
+    } else {
+      console.error(
+        "[peerjs] Could not find internal WSS. Keys:",
+        Object.getOwnPropertyNames(peerServer),
+      );
+      socket.destroy();
+    }
+  } else {
+    socket.destroy();
   }
-
-  // All non-/notify upgrades (PeerJS) fall through to PeerJS's
-  // own upgrade listener that it registered on the server automatically
 });
 
+// ── Stats endpoint ──────────────────────────────────────────
 app.get("/stats", (req, res) => {
   res.json({ activeUsers: handles.size });
 });
