@@ -5,12 +5,14 @@
  * ECDH P-256 key pair, serialises them, and persists to IndexedDB.
  * On subsequent visits: loads and returns the stored identity.
  *
- * Nothing is ever written to localStorage or sent to the server.
+ * Falls back to sessionStorage if IndexedDB is unavailable (Firefox private
+ * browsing, Samsung Browser quirks, blocked by permissions policy, etc.).
  */
 
 const DB_NAME = "pulsarchat_identity";
 const STORE = "identity";
 const RECORD_KEY = "self";
+const SESSION_KEY = "pulsarchat_identity";
 
 // Exclude visually ambiguous characters (0/O, 1/I/L)
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -55,11 +57,7 @@ async function createIdentity() {
   };
 }
 
-/**
- * Returns the stored identity, creating and persisting one on first call.
- * Shape: { handle: string, publicKey: number[], privateKey: number[] }
- */
-export async function getIdentity() {
+async function getFromIndexedDB() {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, "readwrite");
@@ -80,4 +78,43 @@ export async function getIdentity() {
     };
     req.onerror = (e) => reject(e.target.error);
   });
+}
+
+/**
+ * Returns the stored identity, creating and persisting one on first call.
+ * Shape: { handle: string, publicKey: number[], privateKey: number[] }
+ *
+ * Never throws — falls back to sessionStorage if IndexedDB is unavailable.
+ */
+export async function getIdentity() {
+  // Feature-detect IndexedDB before touching it
+  if (typeof window !== "undefined" && window.indexedDB) {
+    try {
+      return await getFromIndexedDB();
+    } catch (e) {
+      console.warn(
+        "[pulsarchat] IndexedDB unavailable, falling back to sessionStorage:",
+        e,
+      );
+    }
+  }
+
+  // sessionStorage fallback: works everywhere, lasts for the tab session
+  try {
+    const stored = sessionStorage.getItem(SESSION_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed?.handle) return parsed;
+    }
+  } catch {
+    // sessionStorage blocked (e.g. some strict private modes) — proceed to generate
+  }
+
+  const identity = await createIdentity();
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(identity));
+  } catch {
+    // Can't persist — return ephemeral identity for this page load
+  }
+  return identity;
 }
