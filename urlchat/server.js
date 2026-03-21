@@ -8,12 +8,11 @@ const port = process.env.PORT || 9000;
 const app = express();
 const server = createServer(app);
 
-// ── PeerJS (uses Express middleware only, no auto-upgrade) ──
-const dummyServer = createServer();
-const peerServer = ExpressPeerServer(dummyServer, { path: "/", proxied: true });
+// ── PeerJS (attached to the real server — handles its own upgrades) ──
+const peerServer = ExpressPeerServer(server, { path: "/", proxied: true });
 app.use("/peerjs", peerServer);
 
-// ── Notification WebSocket ──────────────────────────────────
+// ── Notification WebSocket (noServer — we manually upgrade only /notify) ──
 const handles = new Map();
 const wss = new WebSocketServer({ noServer: true });
 
@@ -36,8 +35,6 @@ wss.on("connection", (ws, handle) => {
           JSON.stringify({ type: "ping", from: msg.from, room: msg.room }),
         );
         console.log(`[ping] ${msg.from} → ${msg.to} room=${msg.room}`);
-      } else {
-        console.log(`[ping] ${msg.from} → ${msg.to} (offline)`);
       }
     } else if (msg.type === "status") {
       const online = (msg.handles || []).filter((h) => {
@@ -58,7 +55,7 @@ wss.on("connection", (ws, handle) => {
   });
 });
 
-// ── Single upgrade handler — we control all WebSocket upgrades ──
+// ── Intercept ONLY /notify upgrades — let PeerJS handle everything else ──
 server.on("upgrade", (req, socket, head) => {
   const { pathname, query } = parse(req.url, true);
 
@@ -71,17 +68,13 @@ server.on("upgrade", (req, socket, head) => {
     wss.handleUpgrade(req, socket, head, (ws) => {
       wss.emit("connection", ws, handle);
     });
-  } else if (pathname.startsWith("/peerjs")) {
-    // Forward to PeerJS's internal WebSocket server
-    peerServer._wss.handleUpgrade(req, socket, head, (ws) => {
-      peerServer._wss.emit("connection", ws, req);
-    });
-  } else {
-    socket.destroy();
+    // Don't destroy socket, don't call anything else — just return
   }
+
+  // All non-/notify upgrades (PeerJS) fall through to PeerJS's
+  // own upgrade listener that it registered on the server automatically
 });
 
-// ── Stats endpoint ──────────────────────────────────────────
 app.get("/stats", (req, res) => {
   res.json({ activeUsers: handles.size });
 });
