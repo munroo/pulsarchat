@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { usePeer } from "./hooks/usePeer";
 import { useNotify } from "./hooks/useNotify";
 import { getInitialRoomCode } from "./utils/url";
-import Background from "./components/Background";
+const Background = lazy(() => import("./components/Background"));
 import Lobby from "./components/Lobby";
 import Waiting from "./components/Waiting";
 import Chat from "./components/Chat";
@@ -64,7 +64,7 @@ export default function App() {
 
   return (
     <>
-      <Background />
+      <Suspense fallback={null}><Background /></Suspense>
 
       {showLobby && (
         <Lobby

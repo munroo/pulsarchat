@@ -2,7 +2,7 @@ import styles from "../App.module.css";
 
 export default function Legal({ onBack }) {
   return (
-    <div className={styles.legalWrap}>
+    <main className={styles.legalWrap}>
       <div className={styles.legalInner}>
         <div className={styles.legalHeader}>
           <button className={styles.backBtn} onClick={onBack} title="back">
@@ -39,6 +39,6 @@ export default function Legal({ onBack }) {
           pulsarchat &middot; made by //tedDev
         </div>
       </div>
-    </div>
+    </main>
   );
 }
