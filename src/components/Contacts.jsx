@@ -54,7 +54,7 @@ export default function Contacts({ onBack, onPingContact, notify, onToast }) {
   }
 
   return (
-    <div className={styles.contactsWrap}>
+    <main className={styles.contactsWrap}>
       {/* ── Header ───────────────────────────────────── */}
       <div className={styles.contactsHeader}>
         <button className={styles.backBtn} onClick={onBack} title="back">
@@ -187,6 +187,6 @@ export default function Contacts({ onBack, onPingContact, notify, onToast }) {
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

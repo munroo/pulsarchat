@@ -8,8 +8,8 @@
   margin: 0;
 }
 .logo span {
-  color: var(--accent);
-  font-weight: 600;
+  color: #34c053;
+  /* font-weight: 600; */
 }
 
 .tagline {
@@ -316,11 +316,10 @@
 
 .pulsarLogoWrap {
   position: absolute;
-  top: 0%;
+  top: 5%;
   left: 50%;
-  transform: translateX(-50%) rotate(35deg);
+  transform: translateX(-50%);
   z-index: 0;
-  opacity: 0.7;
   pointer-events: none;
 }
 
@@ -340,8 +339,8 @@
     grid-template-columns: 1fr;
   }
   .pulsarLogoWrap {
-    top: -30px;
-    transform: translateX(-50%) rotate(35deg) scale(0.5);
+    top: -15px;
+    transform: translateX(-50%) scale(0.5);
   }
 }
 

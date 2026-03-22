@@ -412,7 +412,7 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   // ── Render ─────────────────────────────────────────────
 
   return (
-    <div
+    <main
       className={`${styles.chatWrap} ${settings.compact ? styles.compact : ""}`}
     >
       {showSettings && (
@@ -776,6 +776,6 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
           </svg>
         </button>
       </div>
-    </div>
+    </main>
   );
 }
