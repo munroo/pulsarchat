@@ -6,6 +6,13 @@
   box-sizing: border-box;
 }
 
+/* Prevent Safari from auto-zooming on input focus */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
 :root {
   --bg: #0c0c0c;
   --surface: #161616;
@@ -19,17 +26,27 @@
   --blue: #60a5fa;
 }
 
+html {
+  /* Prevent text size adjustment on orientation change */
+  -webkit-text-size-adjust: 100%;
+  /* Prevent iOS rubber-band overscroll showing white gaps */
+  overscroll-behavior: none;
+}
+
 html,
 body,
 #root {
   height: 100%;
+  /* Fix Safari 100vh including the URL bar */
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
   background: var(--bg);
   color: var(--text);
   font-family:
     "SF Mono", "Fira Code", "JetBrains Mono", ui-monospace, monospace;
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
-  overflowx: hidden;
+  overflow-x: hidden;
 }
 
 #root {
