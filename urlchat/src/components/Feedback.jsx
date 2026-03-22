@@ -20,7 +20,7 @@ export default function Feedback({ onBack, onToast }) {
       formData.append("access_key", "6914caff-0b38-4e31-8643-b6b158351ecd");
       formData.append("subject", subject);
       formData.append("message", description);
-      formData.append("contact", email);
+      formData.append("email", email);
       formData.append("botcheck", "");
       const res = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
@@ -101,7 +101,8 @@ export default function Feedback({ onBack, onToast }) {
             <input
               className={styles.feedbackInput}
               type="email"
-              placeholder="optional — how can we reach you?"
+              placeholder="your email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
@@ -109,7 +110,7 @@ export default function Feedback({ onBack, onToast }) {
             <button
               type="submit"
               className={styles.btn}
-              disabled={submitting || !description.trim()}
+              disabled={submitting || !description.trim() || !email.trim()}
               style={{ width: "100%", marginTop: 4 }}
             >
               {submitting ? "sending…" : "send feedback"}
