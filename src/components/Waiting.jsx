@@ -22,7 +22,7 @@ export default function Waiting({ roomCode, onBack, onToast, loading }) {
   }
 
   return (
-    <div className={styles.waiting}>
+    <main className={styles.waiting}>
       <div className={styles.logo}>
         pulsar<span>chat</span>
       </div>
@@ -84,6 +84,6 @@ export default function Waiting({ roomCode, onBack, onToast, loading }) {
       >
         ← back
       </button>
-    </div>
+    </main>
   );
 }

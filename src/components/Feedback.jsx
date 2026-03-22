@@ -43,7 +43,7 @@ export default function Feedback({ onBack, onToast }) {
   }
 
   return (
-    <div className={styles.feedbackWrap}>
+    <main className={styles.feedbackWrap}>
       <div className={styles.feedbackInner}>
         <div className={styles.legalHeader}>
           <button className={styles.backBtn} onClick={onBack} title="back">
@@ -118,6 +118,6 @@ export default function Feedback({ onBack, onToast }) {
           </form>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

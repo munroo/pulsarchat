@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import PulsarLogo from "./PulsarLogo";
 import styles from "../App.module.css";
 
 export default function Lobby({
@@ -23,11 +22,11 @@ export default function Lobby({
   }
 
   return (
-    <div className={styles.lobby}>
+    <main className={styles.lobby}>
       {/* ── Hero ──────────────────────────────────────── */}
       <div className={styles.hero}>
         <div className={styles.pulsarLogoWrap}>
-          <PulsarLogo size={250} />
+          <img src="/logo.svg" width="200" alt="" fetchpriority="high" />
         </div>
         <h1 className={styles.logo}>
           Pulsar<span>chat</span>
@@ -330,8 +329,8 @@ export default function Lobby({
           pulsarchat &middot; made by //tedDev &middot;{" "}
           <button className={styles.legalLink} onClick={onLegal}>
             terms &amp; privacy
-          </button>
-          {" "}&middot;{" "}
+          </button>{" "}
+          &middot;{" "}
           <a
             href="https://github.com/munroo/pulsarchat"
             target="_blank"
@@ -360,6 +359,6 @@ export default function Lobby({
           />
         </svg>
       </button>
-    </div>
+    </main>
   );
 }
