@@ -18,11 +18,15 @@ import {
  * It's null until the handshake completes; Chat should wait for it.
  */
 
-async function fetchIceServers() {
-  const res = await fetch(
-    "https://urlchat.metered.live/api/v1/turn/credentials?apiKey=3469457bbe4c62c6be926899c183c26a8a7d",
-  );
-  return res.json();
+function getIceServers() {
+  return [
+    { urls: "stun:stun.l.google.com:19302" },
+    {
+      urls: "turn:free.expressturn.com:3478",
+      username: import.meta.env.VITE_TURN_USERNAME,
+      credential: import.meta.env.VITE_TURN_CREDENTIAL,
+    },
+  ];
 }
 
 async function wakeServer() {
@@ -141,15 +145,8 @@ export function usePeer() {
     window.history.replaceState(null, "", `?room=${code}`);
 
     await wakeServer();
-    setLoading("fetching credentials…");
 
-    let iceServers = [];
-    try {
-      iceServers = await fetchIceServers();
-    } catch {
-      iceServers = [];
-    }
-
+    const iceServers = getIceServers();
     setLoading("");
     const p = makePeer(code, iceServers);
     peerRef.current = p;
@@ -199,13 +196,7 @@ export function usePeer() {
     await wakeServer();
     setLoading("connecting…");
 
-    let iceServers = [];
-    try {
-      iceServers = await fetchIceServers();
-    } catch {
-      iceServers = [];
-    }
-
+    const iceServers = getIceServers();
     const p = makePeer(undefined, iceServers);
     peerRef.current = p;
 
