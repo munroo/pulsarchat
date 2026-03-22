@@ -24,7 +24,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 150px;
+  min-width: 150px;
+  width: auto;
+  white-space: nowrap;
   gap: 8px;
   padding: 10px 20px;
   border: none;
@@ -80,6 +82,7 @@
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
 }
 
 .hero {
@@ -350,6 +353,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   padding: 40px 20px;
   gap: 8px;
 }
@@ -434,6 +438,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: -webkit-fill-available;
   max-width: 640px;
   margin: 0 auto;
 }
@@ -606,7 +611,7 @@
   border-radius: 10px;
   color: var(--text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 16px;
   resize: none;
   outline: none;
   line-height: 1.4;
@@ -685,6 +690,7 @@
   bottom: 44px;
   left: 0;
   width: 280px;
+  max-width: calc(100vw - 32px);
   max-height: 240px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -789,6 +795,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: -webkit-fill-available;
   max-width: 540px;
   margin: 0 auto;
 }
@@ -883,7 +890,7 @@
   border-radius: 8px;
   color: var(--text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 16px;
   outline: none;
   transition: border-color 0.15s;
 }
@@ -1396,7 +1403,7 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text);
-  font-size: 13px;
+  font-size: 16px;
   font-family: inherit;
   resize: vertical;
   outline: none;
@@ -1415,7 +1422,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
-  font-size: 13px;
+  font-size: 16px;
   font-family: inherit;
   text-align: left;
   letter-spacing: normal;
