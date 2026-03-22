@@ -9,7 +9,10 @@ import {
 } from "../utils/notify";
 import { compressImage } from "../utils/image";
 import { handleShare } from "../utils/share";
+import { playNotificationSound } from "../utils/sound";
 import EMOJI from "../utils/emoji";
+import { useSettings } from "../hooks/useSettings";
+import Settings from "./Settings";
 import styles from "../App.module.css";
 
 // ── Emoji Picker ───────────────────────────────────────
@@ -76,12 +79,24 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
   const [hoveredMsgId, setHoveredMsgId] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [fingerprint, setFingerprint] = useState("");
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const msgIdRef = useRef(1);
   const imgBufferRef = useRef({});
+
+  const { settings, setSetting } = useSettings();
+  // Keep a ref so the stable onData/onClose closures can read latest settings
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
+  // ── Scroll to bottom on new messages ───────────────────
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -108,6 +123,31 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
     return () => document.removeEventListener("touchstart", handleTouch);
   }, [hoveredMsgId]);
 
+  // ── Security fingerprint ───────────────────────────────
+
+  useEffect(() => {
+    if (!sharedKey) return;
+    (async () => {
+      try {
+        // Encrypt a known constant with a fixed IV — deterministic for the same
+        // shared key, so both peers will compute the same fingerprint.
+        const iv = new Uint8Array(12); // all zeros
+        const data = new TextEncoder().encode("pulsarchat-fingerprint");
+        const ct = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          sharedKey,
+          data,
+        );
+        const hash = await crypto.subtle.digest("SHA-256", ct);
+        const bytes = Array.from(new Uint8Array(hash)).slice(0, 16);
+        const hex = bytes
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("");
+        setFingerprint(hex.match(/.{4}/g).join("-").toUpperCase());
+      } catch {}
+    })();
+  }, [sharedKey]);
+
   // ── Helpers ────────────────────────────────────────────
 
   function now() {
@@ -120,10 +160,23 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   }
 
   function addMsg(type, text, extra = {}) {
+    const id = msgIdRef.current++;
     setMessages((prev) => [
       ...prev,
-      { id: msgIdRef.current++, type, text, time: now(), ...extra },
+      { id, type, text, time: now(), ...extra },
     ]);
+    return id;
+  }
+
+  function scheduleDelete(id) {
+    setTimeout(() => {
+      setMessages((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, fadingOut: true } : m)),
+      );
+    }, 29000);
+    setTimeout(() => {
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+    }, 30000);
   }
 
   // ── Incoming data ──────────────────────────────────────
@@ -137,7 +190,7 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
       if (data.type === "typing") {
         try {
           const text = await decrypt(sharedKey, data.payload);
-          setScrollingTitle(text);
+          if (settingsRef.current.tabTitle) setScrollingTitle(text);
         } catch {}
         setPeerTyping(true);
         if (document.hidden) startFlash();
@@ -162,7 +215,9 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
           } catch {
             // plain string — backward compat
           }
-          addMsg("theirs", msgText, replyTo ? { replyTo } : {});
+          const id = addMsg("theirs", msgText, replyTo ? { replyTo } : {});
+          if (settingsRef.current.sounds) playNotificationSound();
+          if (settingsRef.current.autoDelete) scheduleDelete(id);
         } catch {
           addMsg("sys", "\u26a0 failed to decrypt a message");
         }
@@ -183,7 +238,9 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
         const buf = imgBufferRef.current[data.id];
         if (buf && buf.chunks.length === buf.total) {
           const dataUrl = buf.chunks.join("");
-          addMsg("theirs", "", { image: dataUrl });
+          const id = addMsg("theirs", "", { image: dataUrl });
+          if (settingsRef.current.sounds) playNotificationSound();
+          if (settingsRef.current.autoDelete) scheduleDelete(id);
         } else {
           addMsg("sys", "\u26a0 incomplete image received");
         }
@@ -203,14 +260,14 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
       conn.off("data", onData);
       conn.off("close", onClose);
     };
-  }, [conn, sharedKey, roomCode]);
+  }, [conn, sharedKey]);
 
   // ── Text input ─────────────────────────────────────────
 
   async function handleInput(e) {
     const val = e.target.value;
     setInputVal(val);
-    setScrollingTitle(val);
+    if (settings.tabTitle) setScrollingTitle(val);
     if (conn?.open && sharedKey) {
       if (val) {
         const payload = await encrypt(sharedKey, val);
@@ -250,13 +307,14 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
       return;
     }
 
-    addMsg(
+    const id = addMsg(
       "mine",
       text,
       replyTarget
         ? { replyTo: { id: replyTarget.id, text: replyTarget.text } }
         : {},
     );
+    if (settings.autoDelete) scheduleDelete(id);
     setInputVal("");
     setReplyTarget(null);
     resetTitle();
@@ -303,7 +361,8 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
       return;
     }
 
-    addMsg("mine", "", { image: pendingImage.dataUrl });
+    const id = addMsg("mine", "", { image: pendingImage.dataUrl });
+    if (settings.autoDelete) scheduleDelete(id);
     setPendingImage(null);
     resetTitle();
   }
@@ -353,7 +412,18 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   // ── Render ─────────────────────────────────────────────
 
   return (
-    <div className={styles.chatWrap}>
+    <div
+      className={`${styles.chatWrap} ${settings.compact ? styles.compact : ""}`}
+    >
+      {showSettings && (
+        <Settings
+          settings={settings}
+          setSetting={setSetting}
+          onClose={() => setShowSettings(false)}
+          fingerprint={fingerprint}
+        />
+      )}
+
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
       <div className={styles.chatHeader}>
@@ -435,6 +505,21 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
             />
           </svg>
         </button>
+        <button
+          className={styles.iconBtn}
+          onClick={() => setShowSettings(true)}
+          title="settings"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+            <path
+              d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
       </div>
 
       {/* Messages */}
@@ -459,7 +544,7 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
             <div
               key={msg.id}
               data-msgid={msg.id}
-              className={`${styles.msg} ${isMine ? styles.mine : styles.theirs}`}
+              className={`${styles.msg} ${isMine ? styles.mine : styles.theirs}${msg.fadingOut ? " " + styles.fadingOut : ""}`}
               onMouseEnter={() => setHoveredMsgId(msg.id)}
               onMouseLeave={() => setHoveredMsgId(null)}
               onClick={() => handleMsgClick(msg.id)}
@@ -504,7 +589,7 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
                   <div className={styles.bubble}>{msg.text}</div>
                 )}
               </div>
-              {isGroupEnd && (
+              {isGroupEnd && settings.timestamps && (
                 <div className={styles.msgTime}>{msg.time}</div>
               )}
             </div>
