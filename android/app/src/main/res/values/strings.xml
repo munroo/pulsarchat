@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">pulsarchat</string>
+    <string name="title_activity_main">pulsarchat</string>
+    <string name="package_name">space.pulsarchat.app</string>
+    <string name="custom_url_scheme">space.pulsarchat.app</string>
+</resources>

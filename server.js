@@ -3,6 +3,7 @@ import express from "express";
 import { ExpressPeerServer } from "peer";
 import { WebSocketServer } from "ws";
 import { parse } from "url";
+import admin from "firebase-admin";
 
 const port = process.env.PORT || 9000;
 const app = express();
@@ -15,11 +16,23 @@ app.use("/peerjs", peerServer);
 
 // ── Notification WebSocket ──────────────────────────────────
 const handles = new Map();
+const pushTokens = new Map();
 const wss = new WebSocketServer({ noServer: true });
+
+// Initialize Firebase Admin from environment variable
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || "{}");
+if (serviceAccount.project_id) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+  console.log("[firebase] initialized");
+} else {
+  console.warn("[firebase] no service account — push notifications disabled");
+}
 
 wss.on("connection", (ws, handle) => {
   handles.set(handle, ws);
-  console.log(`[+] ${handle} connected (total: ${handles.size})`);
+  console.log(`[notify] connected (total: ${handles.size})`);
 
   ws.on("message", (raw) => {
     let msg;
@@ -35,9 +48,46 @@ wss.on("connection", (ws, handle) => {
         target.send(
           JSON.stringify({ type: "ping", from: msg.from, room: msg.room }),
         );
-        console.log(`[ping] ${msg.from} → ${msg.to} room=${msg.room}`);
+        console.log("[ping] relayed");
       } else {
-        console.log(`[ping] ${msg.from} → ${msg.to} (offline)`);
+        const pushToken = pushTokens.get(msg.to);
+        if (pushToken && admin.apps.length > 0) {
+          admin
+            .messaging()
+            .send({
+              token: pushToken,
+              notification: {
+                title: "pulsarchat",
+                body: `${msg.from} wants to chat`,
+              },
+              data: {
+                type: "ping",
+                from: msg.from,
+                room: msg.room,
+              },
+              android: {
+                priority: "high",
+                notification: {
+                  channelId: "pulsarchat_pings",
+                  icon: "ic_launcher",
+                },
+              },
+            })
+            .then(() => {
+              console.log("[push] notification sent");
+            })
+            .catch((err) => {
+              console.error("[push] notification failed:", err.message);
+              pushTokens.delete(msg.to);
+            });
+        } else {
+          console.log("[ping] target offline, no push token");
+        }
+      }
+    } else if (msg.type === "register-push-token") {
+      if (msg.token && handle) {
+        pushTokens.set(handle, msg.token);
+        console.log("[push] token registered");
       }
     } else if (msg.type === "status") {
       const online = (msg.handles || []).filter((h) => {
@@ -50,7 +100,7 @@ wss.on("connection", (ws, handle) => {
 
   ws.on("close", () => {
     handles.delete(handle);
-    console.log(`[-] ${handle} disconnected (total: ${handles.size})`);
+    console.log(`[notify] disconnected (total: ${handles.size})`);
   });
 
   ws.on("error", () => {
@@ -72,8 +122,6 @@ server.on("upgrade", (req, socket, head) => {
       wss.emit("connection", ws, handle);
     });
   } else if (pathname.startsWith("/peerjs")) {
-    // PeerJS attaches its own ws upgrade listener to dummyServer.
-    // Forward the upgrade event there so ws handles it directly.
     dummyServer.emit("upgrade", req, socket, head);
   } else {
     socket.destroy();
