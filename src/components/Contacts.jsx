@@ -3,7 +3,7 @@ import { getContacts, addContact, deleteContact } from "../utils/contacts";
 import { handleShare } from "../utils/share";
 import styles from "../App.module.css";
 
-export default function Contacts({ onBack, onPingContact, notify, onToast }) {
+export default function Contacts({ onBack, onPingContact, notify, onToast, onOpenSettings }) {
   const [contacts, setContacts] = useState([]);
   const [handleInput, setHandleInput] = useState("");
   const [nickInput, setNickInput] = useState("");
@@ -69,6 +69,22 @@ export default function Contacts({ onBack, onPingContact, notify, onToast }) {
           </svg>
         </button>
         <span className={styles.chatTitle}>contacts</span>
+        <button
+          className={styles.iconBtn}
+          onClick={onOpenSettings}
+          title="settings"
+          style={{ marginLeft: "auto" }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+            <path
+              d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
       </div>
 
       <div className={styles.contactsBody}>

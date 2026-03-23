@@ -106,25 +106,27 @@ export default function Settings({ settings, setSetting, onClose, fingerprint })
             </div>
           </div>
 
-          <div className={styles.settingsSection}>
-            <div className={styles.settingsSectionLabel}>Security</div>
-            <div className={styles.settingsFingerprint}>
-              <div className={styles.settingsFingerprintLabel}>Session fingerprint</div>
-              <div className={styles.settingsFingerprintValue}>
-                {fingerprint || "computing\u2026"}
+          {fingerprint !== null && (
+            <div className={styles.settingsSection}>
+              <div className={styles.settingsSectionLabel}>Security</div>
+              <div className={styles.settingsFingerprint}>
+                <div className={styles.settingsFingerprintLabel}>Session fingerprint</div>
+                <div className={styles.settingsFingerprintValue}>
+                  {fingerprint || "computing\u2026"}
+                </div>
+                <div className={styles.settingsFingerprintHint}>
+                  Compare with your peer to verify the connection is secure.
+                </div>
+                <button
+                  className={styles.settingsCopyBtn}
+                  onClick={copyFingerprint}
+                  disabled={!fingerprint}
+                >
+                  {copied ? "copied!" : "copy"}
+                </button>
               </div>
-              <div className={styles.settingsFingerprintHint}>
-                Compare with your peer to verify the connection is secure.
-              </div>
-              <button
-                className={styles.settingsCopyBtn}
-                onClick={copyFingerprint}
-                disabled={!fingerprint}
-              >
-                {copied ? "copied!" : "copy"}
-              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

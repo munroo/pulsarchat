@@ -18,6 +18,7 @@ export function usePushNotifications(registerPushToken) {
       await PushNotifications.register();
 
       PushNotifications.addListener("registration", async (token) => {
+        console.log("[push] FCM token received:", token.value);
         // Create notification channel (required for Android 8+)
         await PushNotifications.createChannel({
           id: "pulsarchat_pings",
@@ -33,12 +34,19 @@ export function usePushNotifications(registerPushToken) {
         registerPushToken(token.value);
       });
 
-      // Re-register on app resume so the token stays fresh
-      appStateListener = await App.addListener("appStateChange", ({ isActive }) => {
-        if (isActive) {
-          PushNotifications.register();
-        }
+      PushNotifications.addListener("registrationError", (error) => {
+        console.error("[push] registration failed:", error);
       });
+
+      // Re-register on app resume so the token stays fresh
+      appStateListener = await App.addListener(
+        "appStateChange",
+        ({ isActive }) => {
+          if (isActive) {
+            PushNotifications.register();
+          }
+        },
+      );
     }
 
     setup().catch(() => {});
