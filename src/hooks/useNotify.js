@@ -11,6 +11,8 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { getIdentity } from "../utils/identity";
+import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 
 const NOTIFY_URL = import.meta.env.VITE_SERVER_URL
   ? `${import.meta.env.VITE_SERVER_URL}/notify`
@@ -54,6 +56,15 @@ export function useNotify() {
           );
           pendingStatusRef.current = null;
         }
+        if (pendingPushToken.current) {
+          ws.send(
+            JSON.stringify({
+              type: "register-push-token",
+              token: pendingPushToken.current,
+            }),
+          );
+          console.log("[notify] queued push token sent");
+        }
       };
 
       ws.onmessage = (e) => {
@@ -92,10 +103,45 @@ export function useNotify() {
     };
   }, []);
 
+  // Force reconnect when the app returns to the foreground
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      const listener = App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive && wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+      });
+      return () => {
+        listener.then((l) => l.remove());
+      };
+    } else {
+      function handleVisibility() {
+        if (
+          document.visibilityState === "visible" &&
+          wsRef.current &&
+          wsRef.current.readyState !== WebSocket.OPEN
+        ) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+      }
+      document.addEventListener("visibilitychange", handleVisibility);
+      return () =>
+        document.removeEventListener("visibilitychange", handleVisibility);
+    }
+  }, []);
+
+  const pendingPushToken = useRef(null);
+
   const registerPushToken = useCallback((token) => {
+    pendingPushToken.current = token;
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "register-push-token", token }));
+      console.log("[notify] push token sent");
+    } else {
+      console.log("[notify] push token queued (ws not ready)");
     }
   }, []);
 

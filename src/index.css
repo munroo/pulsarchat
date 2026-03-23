@@ -38,6 +38,10 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+body.capacitor {
+  padding-top: 25px;
+}
+
 html,
 body,
 #root {

@@ -11,8 +11,6 @@ import { compressImage } from "../utils/image";
 import { handleShare } from "../utils/share";
 import { playNotificationSound } from "../utils/sound";
 import EMOJI from "../utils/emoji";
-import { useSettings } from "../hooks/useSettings";
-import Settings from "./Settings";
 import styles from "../App.module.css";
 
 // ── Emoji Picker ───────────────────────────────────────
@@ -63,7 +61,16 @@ function Lightbox({ src, onClose }) {
 
 // ── Chat ───────────────────────────────────────────────
 
-export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
+export default function Chat({
+  roomCode,
+  conn,
+  sharedKey,
+  onLeave,
+  onToast,
+  settings,
+  setSetting,
+  onOpenSettings,
+}) {
   const [messages, setMessages] = useState([
     {
       id: 0,
@@ -79,7 +86,6 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
   const [hoveredMsgId, setHoveredMsgId] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [fingerprint, setFingerprint] = useState("");
 
   const messagesEndRef = useRef(null);
@@ -89,7 +95,6 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   const msgIdRef = useRef(1);
   const imgBufferRef = useRef({});
 
-  const { settings, setSetting } = useSettings();
   // Keep a ref so the stable onData/onClose closures can read latest settings
   const settingsRef = useRef(settings);
   useEffect(() => {
@@ -140,9 +145,7 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
         );
         const hash = await crypto.subtle.digest("SHA-256", ct);
         const bytes = Array.from(new Uint8Array(hash)).slice(0, 16);
-        const hex = bytes
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
+        const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
         setFingerprint(hex.match(/.{4}/g).join("-").toUpperCase());
       } catch {}
     })();
@@ -161,10 +164,7 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
 
   function addMsg(type, text, extra = {}) {
     const id = msgIdRef.current++;
-    setMessages((prev) => [
-      ...prev,
-      { id, type, text, time: now(), ...extra },
-    ]);
+    setMessages((prev) => [...prev, { id, type, text, time: now(), ...extra }]);
     return id;
   }
 
@@ -267,7 +267,11 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
   async function handleInput(e) {
     const val = e.target.value;
     setInputVal(val);
-    if (settings.tabTitle) setScrollingTitle(val);
+    if (val) {
+      if (settings.tabTitle) setScrollingTitle(val);
+    } else {
+      resetTitle();
+    }
     if (conn?.open && sharedKey) {
       if (val) {
         const payload = await encrypt(sharedKey, val);
@@ -415,15 +419,6 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
     <main
       className={`${styles.chatWrap} ${settings.compact ? styles.compact : ""}`}
     >
-      {showSettings && (
-        <Settings
-          settings={settings}
-          setSetting={setSetting}
-          onClose={() => setShowSettings(false)}
-          fingerprint={fingerprint}
-        />
-      )}
-
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
       <div className={styles.chatHeader}>
@@ -485,33 +480,17 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
         </div>
         <button
           className={styles.iconBtn}
-          onClick={shareRoom}
-          title="share room"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M8 1v8M5.5 3.5L8 1l2.5 2.5"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M3 9v5h10V9"
-              stroke="currentColor"
-              strokeWidth="1.3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        <button
-          className={styles.iconBtn}
-          onClick={() => setShowSettings(true)}
+          onClick={() => onOpenSettings(fingerprint)}
           title="settings"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+            <circle
+              cx="8"
+              cy="8"
+              r="2"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
             <path
               d="M8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7"
               stroke="currentColor"
@@ -535,9 +514,7 @@ export default function Chat({ roomCode, conn, sharedKey, onLeave, onToast }) {
           const isMine = msg.type === "mine";
           const nextMsg = messages[i + 1];
           const isGroupEnd =
-            !nextMsg ||
-            nextMsg.type !== msg.type ||
-            nextMsg.time !== msg.time;
+            !nextMsg || nextMsg.type !== msg.type || nextMsg.time !== msg.time;
           const isHovered = hoveredMsgId === msg.id;
 
           return (
