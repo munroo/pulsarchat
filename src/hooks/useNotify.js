@@ -12,12 +12,9 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { getIdentity } from "../utils/identity";
 
-// In local dev the Vite frontend runs on a different port from server.js (9000),
-// so point directly at the local backend.  In production both are on Render.
-const NOTIFY_URL =
-  window.location.hostname === "localhost"
-    ? "ws://localhost:9000/notify"
-    : "wss://urlchat.onrender.com/notify";
+const NOTIFY_URL = import.meta.env.VITE_SERVER_URL
+  ? `${import.meta.env.VITE_SERVER_URL}/notify`
+  : "wss://urlchat.onrender.com/notify";
 
 export function useNotify() {
   const wsRef = useRef(null);
@@ -95,6 +92,13 @@ export function useNotify() {
     };
   }, []);
 
+  const registerPushToken = useCallback((token) => {
+    const ws = wsRef.current;
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "register-push-token", token }));
+    }
+  }, []);
+
   const sendPing = useCallback((toHandle, fromHandle, room) => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
@@ -123,5 +127,6 @@ export function useNotify() {
     sendPing,
     queryStatus,
     dismissPing,
+    registerPushToken,
   };
 }
