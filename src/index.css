@@ -14,14 +14,16 @@ select {
 }
 
 :root {
+  /* --accent: #6ee7b7;
+  --accent-dim: #34d399; */
+  --accent: #50d36d;
+  --accent-dim: #34d399;
   --bg: #0c0c0c;
   --surface: #161616;
   --surface2: #1e1e1e;
   --border: #2a2a2a;
   --text: #e8e8e8;
   --muted: #999;
-  --accent: #6ee7b7;
-  --accent-dim: #34d399;
   --danger: #f87171;
   --blue: #60a5fa;
 }
@@ -39,7 +41,21 @@ body {
 }
 
 body.capacitor {
-  padding-top: 25px;
+  padding-top: 40px;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 html,

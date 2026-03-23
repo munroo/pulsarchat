@@ -18,7 +18,6 @@ export function usePushNotifications(registerPushToken) {
       await PushNotifications.register();
 
       PushNotifications.addListener("registration", async (token) => {
-        console.log("[push] FCM token received:", token.value);
         // Create notification channel (required for Android 8+)
         await PushNotifications.createChannel({
           id: "pulsarchat_pings",
