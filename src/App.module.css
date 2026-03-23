@@ -315,18 +315,14 @@
 }
 
 .pulsarLogoWrap {
-  position: absolute;
-  top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
+  img {
+    width: 100px;
+  }
   z-index: 0;
   pointer-events: none;
 }
 
 @media (max-width: 600px) {
-  .hero {
-    padding-top: 150px;
-  }
   .cardRow {
     flex-direction: column;
     align-items: center;
@@ -339,8 +335,9 @@
     grid-template-columns: 1fr;
   }
   .pulsarLogoWrap {
-    top: -15px;
-    transform: translateX(-50%) scale(0.5);
+    img {
+      width: 50px;
+    }
   }
 }
 
@@ -503,6 +500,7 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -1441,8 +1439,8 @@
 
 .floatingFeedback {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 40px;
+  right: 40px;
   z-index: 50;
   width: 40px;
   height: 40px;
@@ -1467,8 +1465,8 @@
 
 .floatingSettings {
   position: fixed;
-  top: 24px;
-  right: 24px;
+  top: 40px;
+  right: 40px;
   z-index: 50;
   width: 36px;
   height: 36px;
@@ -1558,6 +1556,10 @@
   flex-direction: column;
   animation: slideInRight 0.2s ease-out;
   overflow-y: auto;
+}
+
+:global(body.capacitor) .settingsPanel {
+  padding-top: 40px;
 }
 
 .settingsHeader {

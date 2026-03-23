@@ -63,7 +63,7 @@ export function useNotify() {
               token: pendingPushToken.current,
             }),
           );
-          console.log("[notify] queued push token sent");
+
         }
       };
 
@@ -139,9 +139,6 @@ export function useNotify() {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "register-push-token", token }));
-      console.log("[notify] push token sent");
-    } else {
-      console.log("[notify] push token queued (ws not ready)");
     }
   }, []);
 
