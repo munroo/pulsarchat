@@ -48,7 +48,6 @@ wss.on("connection", (ws, handle) => {
         target.send(
           JSON.stringify({ type: "ping", from: msg.from, room: msg.room }),
         );
-        console.log("[ping] relayed");
       } else {
         const pushToken = pushTokens.get(msg.to);
         if (pushToken && admin.apps.length > 0) {
@@ -80,14 +79,11 @@ wss.on("connection", (ws, handle) => {
               console.error("[push] notification failed:", err.message);
               pushTokens.delete(msg.to);
             });
-        } else {
-          console.log("[ping] target offline, no push token");
         }
       }
     } else if (msg.type === "register-push-token") {
       if (msg.token && handle) {
         pushTokens.set(handle, msg.token);
-        console.log("[push] token registered");
       }
     } else if (msg.type === "status") {
       const online = (msg.handles || []).filter((h) => {
