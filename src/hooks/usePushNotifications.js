@@ -38,6 +38,16 @@ export function usePushNotifications(registerPushToken) {
         console.error("[push] registration failed:", error);
       });
 
+      PushNotifications.addListener(
+        "pushNotificationActionPerformed",
+        (action) => {
+          const data = action.notification.data;
+          if (data.room) {
+            window.location.href = `/?room=${data.room}`;
+          }
+        },
+      );
+
       // Re-register on app resume so the token stays fresh
       appStateListener = await App.addListener(
         "appStateChange",

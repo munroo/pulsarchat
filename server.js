@@ -62,7 +62,7 @@ wss.on("connection", (ws, handle) => {
               },
               data: {
                 type: "ping",
-                from: msg.from,
+                senderHandle: msg.from,
                 room: msg.room,
               },
               android: {
