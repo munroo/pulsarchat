@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { usePeer } from "./hooks/usePeer";
 import { useNotify } from "./hooks/useNotify";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 import { getInitialRoomCode } from "./utils/url";
 const Background = lazy(() => import("./components/Background"));
 import Lobby from "./components/Lobby";
@@ -18,6 +19,7 @@ export default function App() {
   const { screen, roomCode, conn, sharedKey, toast, loading, actions } =
     usePeer();
   const notify = useNotify();
+  usePushNotifications(notify.registerPushToken);
 
   // Track which screen the lobby-level nav is showing
   // "lobby" | "contacts" — the peer screens (waiting/chat) take priority

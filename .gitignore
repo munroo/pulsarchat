@@ -3,3 +3,16 @@ node_modules/
 .env.local
 .env.production
 dist
+# Android
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/app/release/
+android/capacitor-cordova-android-plugins/build/
+android/capacitor-android/build/
+android/local.properties
+android/app/google-services.json
+
+# Capacitor
+capacitor.config.json.bak

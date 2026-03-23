@@ -29,15 +29,20 @@ function getIceServers() {
   ];
 }
 
+const _serverUrl = import.meta.env.VITE_SERVER_URL || "wss://urlchat.onrender.com";
+const _serverHttpBase = _serverUrl.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
+const _serverHost = (() => { try { return new URL(_serverHttpBase).hostname; } catch { return "urlchat.onrender.com"; } })();
+const _serverSecure = _serverUrl.startsWith("wss://") || _serverUrl.startsWith("https://");
+
 async function wakeServer() {
-  await fetch("https://urlchat.onrender.com/peerjs").catch(() => {});
+  await fetch(`${_serverHttpBase}/peerjs`).catch(() => {});
 }
 
 function makePeer(id, iceServers) {
   return new Peer(id, {
-    host: "urlchat.onrender.com",
+    host: _serverHost,
     path: "/peerjs",
-    secure: true,
+    secure: _serverSecure,
     config: { iceServers },
     pingInterval: 5000,
   });
