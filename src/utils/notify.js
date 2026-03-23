@@ -52,6 +52,7 @@ export function stopFlash() {
 export function setScrollingTitle(text) {
   if (!text) {
     stopScrollTitle();
+    document.title = APP_TITLE;
     return;
   }
 

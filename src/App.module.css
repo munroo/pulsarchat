@@ -4,7 +4,7 @@
   font-size: 28px;
   font-weight: 300;
   letter-spacing: -0.5px;
-  color: var(--muted);
+  color: white;
   margin: 0;
 }
 .logo span {
@@ -14,7 +14,7 @@
 
 .tagline {
   font-size: 12px;
-  color: var(--muted);
+  color: #34c053;
   margin-top: 4px;
   letter-spacing: 0.5px;
   text-align: center;
@@ -1034,6 +1034,7 @@
 
 .pingActions .btn {
   flex: 1;
+  min-width: 90px;
 }
 
 /* ── Contacts button in lobby ───────────────────────── */
@@ -1459,6 +1460,32 @@
     background 0.15s;
 }
 .floatingFeedback:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+
+.floatingSettings {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 50;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s,
+    background 0.15s;
+}
+.floatingSettings:hover {
   color: var(--accent);
   border-color: var(--accent);
   background: var(--surface2);

@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { usePeer } from "./hooks/usePeer";
 import { useNotify } from "./hooks/useNotify";
 import { usePushNotifications } from "./hooks/usePushNotifications";
+import { useSettings } from "./hooks/useSettings";
 import { getInitialRoomCode } from "./utils/url";
 const Background = lazy(() => import("./components/Background"));
 import Lobby from "./components/Lobby";
@@ -10,6 +11,7 @@ import Chat from "./components/Chat";
 import Contacts from "./components/Contacts";
 import Legal from "./components/Legal";
 import Feedback from "./components/Feedback";
+import Settings from "./components/Settings";
 import Toast from "./components/Toast";
 import styles from "./App.module.css";
 
@@ -20,6 +22,14 @@ export default function App() {
     usePeer();
   const notify = useNotify();
   usePushNotifications(notify.registerPushToken);
+  const { settings, setSetting } = useSettings();
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsFingerprint, setSettingsFingerprint] = useState(null);
+
+  function openSettings(fp = null) {
+    setSettingsFingerprint(fp);
+    setShowSettings(true);
+  }
 
   // Track which screen the lobby-level nav is showing
   // "lobby" | "contacts" — the peer screens (waiting/chat) take priority
@@ -68,6 +78,15 @@ export default function App() {
     <>
       <Suspense fallback={null}><Background /></Suspense>
 
+      {showSettings && (
+        <Settings
+          settings={settings}
+          setSetting={setSetting}
+          onClose={() => setShowSettings(false)}
+          fingerprint={settingsFingerprint}
+        />
+      )}
+
       {showLobby && (
         <Lobby
           onCreate={actions.createRoom}
@@ -75,6 +94,7 @@ export default function App() {
           onContacts={() => setLobbyView("contacts")}
           onLegal={() => setLobbyView("legal")}
           onFeedback={() => setLobbyView("feedback")}
+          onOpenSettings={() => openSettings()}
           initialCode={initialCode}
         />
       )}
@@ -94,6 +114,7 @@ export default function App() {
           onPingContact={handlePingContact}
           notify={notify}
           onToast={actions.showToast}
+          onOpenSettings={() => openSettings()}
         />
       )}
 
@@ -103,6 +124,7 @@ export default function App() {
           onBack={actions.backToLobby}
           onToast={actions.showToast}
           loading={loading}
+          onOpenSettings={() => openSettings()}
         />
       )}
 
@@ -113,6 +135,9 @@ export default function App() {
           sharedKey={sharedKey}
           onLeave={actions.backToLobby}
           onToast={actions.showToast}
+          settings={settings}
+          setSetting={setSetting}
+          onOpenSettings={openSettings}
         />
       )}
 
