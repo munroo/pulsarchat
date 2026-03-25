@@ -19,19 +19,20 @@ import {
  */
 
 function getIceServers() {
-  return [
-    { urls: "stun:stun.l.google.com:19302" },
-    {
-      urls: "turn:free.expressturn.com:3478",
+  const servers = [{ urls: "stun:stun.l.google.com:19302" }];
+  if (import.meta.env.VITE_TURN_URL) {
+    servers.push({
+      urls: import.meta.env.VITE_TURN_URL,
       username: import.meta.env.VITE_TURN_USERNAME,
       credential: import.meta.env.VITE_TURN_CREDENTIAL,
-    },
-  ];
+    });
+  }
+  return servers;
 }
 
-const _serverUrl = import.meta.env.VITE_SERVER_URL || "wss://urlchat.onrender.com";
+const _serverUrl = import.meta.env.VITE_SERVER_URL ?? "";
 const _serverHttpBase = _serverUrl.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
-const _serverHost = (() => { try { return new URL(_serverHttpBase).hostname; } catch { return "urlchat.onrender.com"; } })();
+const _serverHost = (() => { try { return new URL(_serverHttpBase).hostname; } catch { return ""; } })();
 const _serverSecure = _serverUrl.startsWith("wss://") || _serverUrl.startsWith("https://");
 
 async function wakeServer() {
