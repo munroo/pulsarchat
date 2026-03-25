@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { encrypt, decrypt } from "../utils/crypto";
+import { encrypt, decrypt, getFingerprint } from "../utils/crypto";
 import { clearUrl } from "../utils/url";
 import {
   startFlash,
@@ -134,19 +134,7 @@ export default function Chat({
     if (!sharedKey) return;
     (async () => {
       try {
-        // Encrypt a known constant with a fixed IV — deterministic for the same
-        // shared key, so both peers will compute the same fingerprint.
-        const iv = new Uint8Array(12); // all zeros
-        const data = new TextEncoder().encode("pulsarchat-fingerprint");
-        const ct = await crypto.subtle.encrypt(
-          { name: "AES-GCM", iv },
-          sharedKey,
-          data,
-        );
-        const hash = await crypto.subtle.digest("SHA-256", ct);
-        const bytes = Array.from(new Uint8Array(hash)).slice(0, 16);
-        const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
-        setFingerprint(hex.match(/.{4}/g).join("-").toUpperCase());
+        setFingerprint(await getFingerprint(sharedKey));
       } catch {}
     })();
   }, [sharedKey]);
@@ -222,10 +210,20 @@ export default function Chat({
           addMsg("sys", "\u26a0 failed to decrypt a message");
         }
       } else if (data.type === "img-start") {
-        imgBufferRef.current[data.id] = { total: data.total, chunks: [] };
+        if (data.total > 50) return; // ~600KB max (50 × 12KB chunks)
+        if (Object.keys(imgBufferRef.current).length > 3) return; // max 3 concurrent transfers
+        imgBufferRef.current[data.id] = {
+          total: data.total,
+          chunks: [],
+          startTime: Date.now(),
+        };
       } else if (data.type === "img-chunk") {
         const buf = imgBufferRef.current[data.id];
         if (!buf) return;
+        if (Date.now() - buf.startTime > 30000) {
+          delete imgBufferRef.current[data.id];
+          return;
+        }
         try {
           const piece = await decrypt(sharedKey, data.payload);
           buf.chunks[data.index] = piece;
@@ -401,7 +399,7 @@ export default function Chat({
     handleShare(
       "pulsarchat",
       `Join my encrypted chat room: ${roomCode}`,
-      `https://pulsarchat.space/?room=${roomCode}`,
+      `${import.meta.env.VITE_APP_URL ?? ""}/?room=${roomCode}`,
       onToast,
     );
   }

@@ -48,7 +48,7 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
     handleShare(
       "pulsarchat",
       `Add me on pulsarchat! My handle: ${notify.handle || ""}`,
-      "https://pulsarchat.space",
+      import.meta.env.VITE_APP_URL ?? "",
       onToast,
     );
   }

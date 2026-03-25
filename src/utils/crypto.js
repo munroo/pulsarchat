@@ -42,9 +42,20 @@ export async function deriveSharedKey(privateKey, remotePublicKey) {
     { name: "ECDH", public: remotePublicKey },
     privateKey,
     AES_PARAMS,
-    false,
+    true, // extractable for fingerprinting
     ["encrypt", "decrypt"],
   );
+}
+
+// ── Fingerprint ─────────────────────────────────────────
+
+export async function getFingerprint(sharedKey) {
+  const raw = await crypto.subtle.exportKey("raw", sharedKey);
+  const hash = await crypto.subtle.digest("SHA-256", raw);
+  const bytes = new Uint8Array(hash);
+  return Array.from(bytes.slice(0, 8))
+    .map((b) => b.toString(16).padStart(2, "0").toUpperCase())
+    .join(" ");
 }
 
 // ── Encrypt / Decrypt ──────────────────────────────────
