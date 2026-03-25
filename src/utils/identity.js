@@ -17,6 +17,13 @@ const SESSION_KEY = "pulsarchat_identity";
 // Exclude visually ambiguous characters (0/O, 1/I/L)
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
+function generateToken() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
@@ -52,6 +59,7 @@ async function createIdentity() {
   );
   return {
     handle,
+    token: generateToken(),
     publicKey: Array.from(new Uint8Array(publicKeyRaw)),
     privateKey: Array.from(new Uint8Array(privateKeyPkcs8)),
   };
@@ -65,7 +73,12 @@ async function getFromIndexedDB() {
     const req = store.get(RECORD_KEY);
     req.onsuccess = async (e) => {
       if (e.target.result) {
-        resolve(e.target.result);
+        const identity = e.target.result;
+        if (!identity.token) {
+          identity.token = generateToken();
+          store.put(identity, RECORD_KEY);
+        }
+        resolve(identity);
       } else {
         try {
           const identity = await createIdentity();

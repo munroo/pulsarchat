@@ -2,7 +2,7 @@
  * useNotify — manages the WebSocket connection to the notification server.
  *
  * Responsibilities:
- *  - Connect to wss://urlchat.onrender.com/notify?handle=<myHandle>
+ *  - Connect to VITE_SERVER_URL/notify?handle=<handle>&token=<token>
  *  - Auto-reconnect on close/error (3 s back-off)
  *  - Expose sendPing(toHandle, fromHandle, room)
  *  - Expose queryStatus(handles[]) → updates onlineHandles set
@@ -14,9 +14,7 @@ import { getIdentity } from "../utils/identity";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
-const NOTIFY_URL = import.meta.env.VITE_SERVER_URL
-  ? `${import.meta.env.VITE_SERVER_URL}/notify`
-  : "wss://urlchat.onrender.com/notify";
+const NOTIFY_URL = `${import.meta.env.VITE_SERVER_URL ?? ""}/notify`;
 
 export function useNotify() {
   const wsRef = useRef(null);
@@ -43,7 +41,7 @@ export function useNotify() {
 
       setHandle(identity.handle);
 
-      ws = new WebSocket(`${NOTIFY_URL}?handle=${identity.handle}`);
+      ws = new WebSocket(`${NOTIFY_URL}?handle=${identity.handle}&token=${identity.token}`);
       wsRef.current = ws;
 
       ws.onopen = () => {
