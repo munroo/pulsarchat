@@ -1,44 +1,34 @@
-import { useState, useEffect, useRef } from "react";
-import { encrypt, decrypt, getFingerprint } from "../utils/crypto";
-import { clearUrl } from "../utils/url";
-import {
-  startFlash,
-  stopFlash,
-  setScrollingTitle,
-  resetTitle,
-} from "../utils/notify";
-import { compressImage } from "../utils/image";
-import { handleShare } from "../utils/share";
-import { playNotificationSound } from "../utils/sound";
+import { useEffect, useRef, useState } from "react";
+import { resetTitle } from "../utils/notify";
 import EMOJI from "../utils/emoji";
+import { useGhostChatSession } from "../hooks/useGhostChatSession";
 import styles from "../App.module.css";
-
-// ── Emoji Picker ───────────────────────────────────────
 
 function EmojiPicker({ onPick, onClose }) {
   const ref = useRef(null);
 
   useEffect(() => {
-    function handleClick(e) {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
+    function handleClick(event) {
+      if (ref.current && !ref.current.contains(event.target)) onClose();
     }
+
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [onClose]);
 
   return (
     <div className={styles.emojiPicker} ref={ref}>
-      {EMOJI.map((cat) => (
-        <div key={cat.name}>
-          <div className={styles.emojiCategory}>{cat.name}</div>
+      {EMOJI.map((category) => (
+        <div key={category.name}>
+          <div className={styles.emojiCategory}>{category.name}</div>
           <div className={styles.emojiGrid}>
-            {cat.emojis.map((e) => (
+            {category.emojis.map((emoji) => (
               <button
-                key={e}
+                key={emoji}
                 className={styles.emojiBtn}
-                onClick={() => onPick(e)}
+                onClick={() => onPick(emoji)}
               >
-                {e}
+                {emoji}
               </button>
             ))}
           </div>
@@ -47,8 +37,6 @@ function EmojiPicker({ onPick, onClose }) {
     </div>
   );
 }
-
-// ── Lightbox ───────────────────────────────────────────
 
 function Lightbox({ src, onClose }) {
   if (!src) return null;
@@ -59,49 +47,46 @@ function Lightbox({ src, onClose }) {
   );
 }
 
-// ── Chat ───────────────────────────────────────────────
-
 export default function Chat({
   roomCode,
   conn,
   sharedKey,
   onLeave,
-  onToast,
   settings,
-  setSetting,
   onOpenSettings,
 }) {
-  const [messages, setMessages] = useState([
-    {
-      id: 0,
-      type: "sys",
-      text: "encrypted connection established \u2726 messages are end-to-end encrypted",
+  const {
+    state: {
+      messages,
+      inputValue,
+      disconnected,
+      peerTyping,
+      pendingImage,
+      replyTarget,
+      fingerprint,
     },
-  ]);
-  const [inputVal, setInputVal] = useState("");
-  const [disconnected, setDisconnected] = useState(false);
-  const [peerTyping, setPeerTyping] = useState(false);
+    actions: {
+      updateInput,
+      queueImage,
+      sendCurrentMessage,
+      selectReplyTarget,
+      clearReplyTarget,
+      setPendingImage,
+    },
+  } = useGhostChatSession({
+    conn,
+    sharedKey,
+    settings,
+  });
+
   const [showEmoji, setShowEmoji] = useState(false);
-  const [pendingImage, setPendingImage] = useState(null);
   const [lightboxSrc, setLightboxSrc] = useState(null);
-  const [replyTarget, setReplyTarget] = useState(null);
-  const [hoveredMsgId, setHoveredMsgId] = useState(null);
-  const [fingerprint, setFingerprint] = useState("");
+  const [hoveredMessageId, setHoveredMessageId] = useState(null);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
-  const msgIdRef = useRef(1);
-  const imgBufferRef = useRef({});
-
-  // Keep a ref so the stable onData/onClose closures can read latest settings
-  const settingsRef = useRef(settings);
-  useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
-  // ── Scroll to bottom on new messages ───────────────────
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -112,306 +97,58 @@ export default function Chat({
   }, []);
 
   useEffect(() => {
-    const onFocus = () => stopFlash();
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, []);
+    if (!hoveredMessageId) return;
 
-  // Clear hovered state when touching outside a message (mobile)
-  useEffect(() => {
-    if (!hoveredMsgId) return;
-    function handleTouch(e) {
-      if (e.target.closest(`[data-msgid="${hoveredMsgId}"]`)) return;
-      setHoveredMsgId(null);
+    function handleTouch(event) {
+      if (event.target.closest(`[data-msgid="${hoveredMessageId}"]`)) return;
+      setHoveredMessageId(null);
     }
+
     document.addEventListener("touchstart", handleTouch);
     return () => document.removeEventListener("touchstart", handleTouch);
-  }, [hoveredMsgId]);
+  }, [hoveredMessageId]);
 
-  // ── Security fingerprint ───────────────────────────────
-
-  useEffect(() => {
-    if (!sharedKey) return;
-    (async () => {
-      try {
-        setFingerprint(await getFingerprint(sharedKey));
-      } catch {}
-    })();
-  }, [sharedKey]);
-
-  // ── Helpers ────────────────────────────────────────────
-
-  function now() {
-    const d = new Date();
-    return (
-      d.getHours().toString().padStart(2, "0") +
-      ":" +
-      d.getMinutes().toString().padStart(2, "0")
-    );
+  async function handleInput(event) {
+    await updateInput(event.target.value);
   }
 
-  function addMsg(type, text, extra = {}) {
-    const id = msgIdRef.current++;
-    setMessages((prev) => [...prev, { id, type, text, time: now(), ...extra }]);
-    return id;
-  }
-
-  function scheduleDelete(id) {
-    setTimeout(() => {
-      setMessages((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, fadingOut: true } : m)),
-      );
-    }, 29000);
-    setTimeout(() => {
-      setMessages((prev) => prev.filter((m) => m.id !== id));
-    }, 30000);
-  }
-
-  // ── Incoming data ──────────────────────────────────────
-
-  useEffect(() => {
-    if (!conn || !sharedKey) return;
-
-    const onData = async (data) => {
-      if (data?.type === "__pubkey") return;
-
-      if (data.type === "typing") {
-        try {
-          const text = await decrypt(sharedKey, data.payload);
-          if (settingsRef.current.tabTitle) setScrollingTitle(text);
-        } catch {}
-        setPeerTyping(true);
-        if (document.hidden) startFlash();
-      } else if (data.type === "clear") {
-        resetTitle();
-        setPeerTyping(false);
-        stopFlash();
-      } else if (data.type === "message") {
-        resetTitle();
-        setPeerTyping(false);
-        stopFlash();
-        try {
-          const plaintext = await decrypt(sharedKey, data.payload);
-          let msgText = plaintext;
-          let replyTo;
-          try {
-            const parsed = JSON.parse(plaintext);
-            if (parsed && typeof parsed.text === "string") {
-              msgText = parsed.text;
-              replyTo = parsed.replyTo;
-            }
-          } catch {
-            // plain string — backward compat
-          }
-          const id = addMsg("theirs", msgText, replyTo ? { replyTo } : {});
-          if (settingsRef.current.sounds) playNotificationSound();
-          if (settingsRef.current.autoDelete) scheduleDelete(id);
-        } catch {
-          addMsg("sys", "\u26a0 failed to decrypt a message");
-        }
-      } else if (data.type === "img-start") {
-        if (data.total > 50) return; // ~600KB max (50 × 12KB chunks)
-        if (Object.keys(imgBufferRef.current).length > 3) return; // max 3 concurrent transfers
-        imgBufferRef.current[data.id] = {
-          total: data.total,
-          chunks: [],
-          startTime: Date.now(),
-        };
-      } else if (data.type === "img-chunk") {
-        const buf = imgBufferRef.current[data.id];
-        if (!buf) return;
-        if (Date.now() - buf.startTime > 30000) {
-          delete imgBufferRef.current[data.id];
-          return;
-        }
-        try {
-          const piece = await decrypt(sharedKey, data.payload);
-          buf.chunks[data.index] = piece;
-        } catch {
-          addMsg("sys", "\u26a0 failed to decrypt image chunk");
-        }
-      } else if (data.type === "img-end") {
-        resetTitle();
-        setPeerTyping(false);
-        const buf = imgBufferRef.current[data.id];
-        if (buf && buf.chunks.length === buf.total) {
-          const dataUrl = buf.chunks.join("");
-          const id = addMsg("theirs", "", { image: dataUrl });
-          if (settingsRef.current.sounds) playNotificationSound();
-          if (settingsRef.current.autoDelete) scheduleDelete(id);
-        } else {
-          addMsg("sys", "\u26a0 incomplete image received");
-        }
-        delete imgBufferRef.current[data.id];
-      }
-    };
-
-    const onClose = () => {
-      setDisconnected(true);
-      addMsg("sys", "peer disconnected");
-      resetTitle();
-    };
-
-    conn.on("data", onData);
-    conn.on("close", onClose);
-    return () => {
-      conn.off("data", onData);
-      conn.off("close", onClose);
-    };
-  }, [conn, sharedKey]);
-
-  // ── Text input ─────────────────────────────────────────
-
-  async function handleInput(e) {
-    const val = e.target.value;
-    setInputVal(val);
-    if (val) {
-      if (settings.tabTitle) setScrollingTitle(val);
-    } else {
-      resetTitle();
-    }
-    if (conn?.open && sharedKey) {
-      if (val) {
-        const payload = await encrypt(sharedKey, val);
-        conn.send({ type: "typing", payload });
-      } else {
-        conn.send({ type: "clear" });
-      }
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendCurrentMessage();
     }
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
-  async function sendMessage() {
-    if (pendingImage) {
-      await sendImage();
-      return;
-    }
-
-    const text = inputVal.trim();
-    if (!text || !conn?.open || !sharedKey) return;
-
-    const msgData = { text };
-    if (replyTarget) {
-      msgData.replyTo = { id: replyTarget.id, text: replyTarget.text };
-    }
-
-    try {
-      const payload = await encrypt(sharedKey, JSON.stringify(msgData));
-      conn.send({ type: "message", payload });
-      conn.send({ type: "clear" });
-    } catch {
-      return;
-    }
-
-    const id = addMsg(
-      "mine",
-      text,
-      replyTarget
-        ? { replyTo: { id: replyTarget.id, text: replyTarget.text } }
-        : {},
-    );
-    if (settings.autoDelete) scheduleDelete(id);
-    setInputVal("");
-    setReplyTarget(null);
-    resetTitle();
-  }
-
-  // ── Image handling ─────────────────────────────────────
-
-  async function handleImageSelect(e) {
-    const file = e.target.files?.[0];
+  async function handleImageSelect(event) {
+    const file = event.target.files?.[0];
     if (!file) return;
-    e.target.value = "";
 
-    try {
-      const dataUrl = await compressImage(file);
-      setPendingImage({ dataUrl, name: file.name });
-    } catch {
-      addMsg("sys", "\u26a0 could not process that image");
-    }
+    event.target.value = "";
+    await queueImage(file);
   }
-
-  async function sendImage() {
-    if (!pendingImage || !conn?.open || !sharedKey) return;
-
-    try {
-      const raw = pendingImage.dataUrl;
-      const CHUNK = 12000;
-      const total = Math.ceil(raw.length / CHUNK);
-      const id = Date.now().toString(36);
-
-      conn.send({ type: "img-start", id, total });
-
-      for (let i = 0; i < total; i++) {
-        const piece = raw.slice(i * CHUNK, (i + 1) * CHUNK);
-        const payload = await encrypt(sharedKey, piece);
-        conn.send({ type: "img-chunk", id, index: i, payload });
-      }
-
-      conn.send({ type: "img-end", id });
-      conn.send({ type: "clear" });
-    } catch (err) {
-      console.error("Image send failed:", err);
-      addMsg("sys", "\u26a0 failed to send image");
-      setPendingImage(null);
-      return;
-    }
-
-    const id = addMsg("mine", "", { image: pendingImage.dataUrl });
-    if (settings.autoDelete) scheduleDelete(id);
-    setPendingImage(null);
-    resetTitle();
-  }
-
-  // ── Emoji ──────────────────────────────────────────────
 
   function handleEmojiPick(emoji) {
-    setInputVal((prev) => prev + emoji);
+    updateInput(`${inputValue}${emoji}`);
     setShowEmoji(false);
     inputRef.current?.focus();
   }
 
-  // ── Reply ──────────────────────────────────────────────
-
-  function handleReply(msg) {
-    setReplyTarget({
-      id: msg.id,
-      text: msg.image ? "" : msg.text,
-      image: msg.image,
-    });
-    setHoveredMsgId(null);
+  function handleReply(message) {
+    selectReplyTarget(message);
+    setHoveredMessageId(null);
     inputRef.current?.focus();
   }
 
-  function handleMsgClick(msgId) {
-    setHoveredMsgId((prev) => (prev === msgId ? null : msgId));
-  }
-
-  // ── Share ──────────────────────────────────────────────
-
-  function shareRoom() {
-    handleShare(
-      "pulsarchat",
-      `Join my encrypted chat room: ${roomCode}`,
-      `${import.meta.env.VITE_APP_URL ?? ""}/?room=${roomCode}`,
-      onToast,
+  function handleMessageClick(messageId) {
+    setHoveredMessageId((current) =>
+      current === messageId ? null : messageId,
     );
   }
-
-  // ── Leave ──────────────────────────────────────────────
 
   function handleLeave() {
     resetTitle();
     onLeave();
   }
-
-  // ── Render ─────────────────────────────────────────────
 
   return (
     <main
@@ -440,14 +177,14 @@ export default function Chat({
           style={
             disconnected
               ? { background: "var(--muted)", boxShadow: "none" }
-              : {}
+              : undefined
           }
         />
         <div className={styles.chatTitle}>
           {disconnected
             ? "disconnected"
             : peerTyping
-              ? "peer is typing\u2026"
+              ? "peer is typing…"
               : "encrypted"}
         </div>
         <div className={styles.chatRoom}>
@@ -499,38 +236,40 @@ export default function Chat({
         </button>
       </div>
 
-      {/* Messages */}
       <div className={styles.messages}>
-        {messages.map((msg, i) => {
-          if (msg.type === "sys")
+        {messages.map((message, index) => {
+          if (message.type === "sys") {
             return (
-              <div key={msg.id} className={styles.sysMsg}>
-                {msg.text}
+              <div key={message.id} className={styles.sysMsg}>
+                {message.text}
               </div>
             );
+          }
 
-          const isMine = msg.type === "mine";
-          const nextMsg = messages[i + 1];
+          const isMine = message.type === "mine";
+          const nextMessage = messages[index + 1];
           const isGroupEnd =
-            !nextMsg || nextMsg.type !== msg.type || nextMsg.time !== msg.time;
-          const isHovered = hoveredMsgId === msg.id;
+            !nextMessage ||
+            nextMessage.type !== message.type ||
+            nextMessage.time !== message.time;
+          const isHovered = hoveredMessageId === message.id;
 
           return (
             <div
-              key={msg.id}
-              data-msgid={msg.id}
-              className={`${styles.msg} ${isMine ? styles.mine : styles.theirs}${msg.fadingOut ? " " + styles.fadingOut : ""}`}
-              onMouseEnter={() => setHoveredMsgId(msg.id)}
-              onMouseLeave={() => setHoveredMsgId(null)}
-              onClick={() => handleMsgClick(msg.id)}
+              key={message.id}
+              data-msgid={message.id}
+              className={`${styles.msg} ${isMine ? styles.mine : styles.theirs}${message.fadingOut ? ` ${styles.fadingOut}` : ""}`}
+              onMouseEnter={() => setHoveredMessageId(message.id)}
+              onMouseLeave={() => setHoveredMessageId(null)}
+              onClick={() => handleMessageClick(message.id)}
             >
               <div className={styles.msgBubbleWrap}>
                 {isHovered && (
                   <button
                     className={styles.replyBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleReply(msg);
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleReply(message);
                     }}
                     title="reply"
                   >
@@ -545,27 +284,26 @@ export default function Chat({
                     </svg>
                   </button>
                 )}
-                {msg.replyTo && (
+                {message.replyTo && (
                   <div className={styles.replyQuote}>
-                    {msg.replyTo.text
-                      ? msg.replyTo.text.slice(0, 80) +
-                        (msg.replyTo.text.length > 80 ? "\u2026" : "")
-                      : "\uD83D\uDCF7 image"}
+                    {message.replyTo.text
+                      ? `${message.replyTo.text.slice(0, 80)}${message.replyTo.text.length > 80 ? "…" : ""}`
+                      : "📷 image"}
                   </div>
                 )}
-                {msg.image ? (
+                {message.image ? (
                   <div
                     className={styles.imgBubble}
-                    onClick={() => setLightboxSrc(msg.image)}
+                    onClick={() => setLightboxSrc(message.image)}
                   >
-                    <img src={msg.image} alt="shared" />
+                    <img src={message.image} alt="shared" />
                   </div>
                 ) : (
-                  <div className={styles.bubble}>{msg.text}</div>
+                  <div className={styles.bubble}>{message.text}</div>
                 )}
               </div>
               {isGroupEnd && settings.timestamps && (
-                <div className={styles.msgTime}>{msg.time}</div>
+                <div className={styles.msgTime}>{message.time}</div>
               )}
             </div>
           );
@@ -573,7 +311,6 @@ export default function Chat({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Reply preview strip */}
       {replyTarget && (
         <div className={styles.replyPreview}>
           <svg
@@ -593,20 +330,18 @@ export default function Chat({
           </svg>
           <span className={styles.replyPreviewText}>
             {replyTarget.image
-              ? "\uD83D\uDCF7 image"
-              : replyTarget.text.slice(0, 60) +
-                (replyTarget.text.length > 60 ? "\u2026" : "")}
+              ? "📷 image"
+              : `${replyTarget.text.slice(0, 60)}${replyTarget.text.length > 60 ? "…" : ""}`}
           </span>
           <button
             className={styles.imagePreviewCancel}
-            onClick={() => setReplyTarget(null)}
+            onClick={clearReplyTarget}
           >
             &times;
           </button>
         </div>
       )}
 
-      {/* Image preview strip */}
       {pendingImage && (
         <div className={styles.imagePreview}>
           <img src={pendingImage.dataUrl} alt="preview" />
@@ -622,12 +357,11 @@ export default function Chat({
         </div>
       )}
 
-      {/* Input row */}
       <div className={styles.inputRow}>
         <div className={styles.emojiPickerWrap}>
           <button
             className={styles.iconBtn}
-            onClick={() => setShowEmoji((s) => !s)}
+            onClick={() => setShowEmoji((value) => !value)}
             disabled={disconnected}
             title="emoji"
           >
@@ -735,7 +469,7 @@ export default function Chat({
           className={styles.msgInput}
           placeholder="Type here..."
           rows={1}
-          value={inputVal}
+          value={inputValue}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           disabled={disconnected}
@@ -743,8 +477,8 @@ export default function Chat({
 
         <button
           className={styles.sendBtn}
-          onClick={sendMessage}
-          disabled={disconnected || (!inputVal.trim() && !pendingImage)}
+          onClick={sendCurrentMessage}
+          disabled={disconnected || (!inputValue.trim() && !pendingImage)}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M14 8L2 2l2.5 6L2 14l12-6z" fill="currentColor" />

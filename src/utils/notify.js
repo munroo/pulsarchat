@@ -5,7 +5,8 @@ let scrollTimer = null;
 let scrollText = "";
 let scrollPos = 0;
 
-const APP_TITLE = "pulsarchat";
+export const APP_TITLE = "pulsarchat";
+const TYPING_TITLE = "someone is typing \u00b7 pulsarchat";
 
 function makeFavicon(color) {
   const c = document.createElement("canvas");
@@ -56,7 +57,7 @@ export function setScrollingTitle(text) {
     return;
   }
 
-  const padded = text + "   \u00b7   ";
+  const padded = TYPING_TITLE + "   \u00b7   ";
   if (scrollTimer && scrollText === padded) return;
 
   scrollText = padded;
@@ -70,7 +71,7 @@ export function setScrollingTitle(text) {
     }, 250);
   }
 
-  document.title = text;
+  document.title = TYPING_TITLE;
 }
 
 export function stopScrollTitle() {

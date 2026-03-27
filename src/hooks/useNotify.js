@@ -2,35 +2,38 @@
  * useNotify — manages the WebSocket connection to the notification server.
  *
  * Responsibilities:
- *  - Connect to VITE_SERVER_URL/notify?handle=<handle>&token=<token>
+ *  - Connect to the notify WebSocket with the local identity
  *  - Auto-reconnect on close/error (3 s back-off)
- *  - Expose sendPing(toHandle, fromHandle, room)
+ *  - Expose sendPing(toHandle, fromHandle, room, { chatMode })
  *  - Expose queryStatus(handles[]) → updates onlineHandles set
- *  - Surface incomingPing: { from, room } when a ping arrives
+ *  - Surface incomingPing: { from, room, chatMode } when a ping arrives
  */
 
 import { useEffect, useRef, useCallback, useState } from "react";
-import { getIdentity } from "../utils/identity";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
+import { getIdentity } from "../utils/identity";
+import { getServerConfig } from "../utils/serverConfig";
 
-const NOTIFY_URL = `${import.meta.env.VITE_SERVER_URL ?? ""}/notify`;
+const NOTIFY_URL = getServerConfig()?.notifyUrl || "";
 
 export function useNotify() {
   const wsRef = useRef(null);
   const activeRef = useRef(true);
-  const [handle, setHandle] = useState(null);
-  const [incomingPing, setIncomingPing] = useState(null); // { from, room }
-  const [onlineHandles, setOnlineHandles] = useState(new Set());
-  // Queue a status query to re-send once the socket is open
   const pendingStatusRef = useRef(null);
+  const pendingPushTokenRef = useRef(null);
+
+  const [handle, setHandle] = useState(null);
+  const [incomingPing, setIncomingPing] = useState(null);
+  const [onlineHandles, setOnlineHandles] = useState(new Set());
 
   useEffect(() => {
     activeRef.current = true;
-    let ws;
     let reconnectTimer;
 
     async function connect() {
+      if (!NOTIFY_URL) return;
+
       let identity;
       try {
         identity = await getIdentity();
@@ -41,7 +44,9 @@ export function useNotify() {
 
       setHandle(identity.handle);
 
-      ws = new WebSocket(`${NOTIFY_URL}?handle=${identity.handle}&token=${identity.token}`);
+      const ws = new WebSocket(
+        `${NOTIFY_URL}?handle=${identity.handle}&token=${identity.token}`,
+      );
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -54,28 +59,36 @@ export function useNotify() {
           );
           pendingStatusRef.current = null;
         }
-        if (pendingPushToken.current) {
+
+        if (pendingPushTokenRef.current) {
           ws.send(
             JSON.stringify({
               type: "register-push-token",
-              token: pendingPushToken.current,
+              token: pendingPushTokenRef.current,
             }),
           );
-
         }
       };
 
-      ws.onmessage = (e) => {
-        let msg;
+      ws.onmessage = (event) => {
+        let message;
         try {
-          msg = JSON.parse(e.data);
+          message = JSON.parse(event.data);
         } catch {
           return;
         }
-        if (msg.type === "ping") {
-          setIncomingPing({ from: msg.from, room: msg.room });
-        } else if (msg.type === "status") {
-          setOnlineHandles(new Set(msg.online));
+
+        if (message.type === "ping") {
+          setIncomingPing({
+            from: message.from,
+            room: message.room,
+            chatMode: message.chatMode || "ghost",
+          });
+          return;
+        }
+
+        if (message.type === "status") {
+          setOnlineHandles(new Set(message.online));
         }
       };
 
@@ -101,7 +114,6 @@ export function useNotify() {
     };
   }, []);
 
-  // Force reconnect when the app returns to the foreground
   useEffect(() => {
     if (Capacitor.isNativePlatform()) {
       const listener = App.addListener("appStateChange", ({ isActive }) => {
@@ -111,40 +123,45 @@ export function useNotify() {
         }
       });
       return () => {
-        listener.then((l) => l.remove());
+        listener.then((result) => result.remove());
       };
-    } else {
-      function handleVisibility() {
-        if (
-          document.visibilityState === "visible" &&
-          wsRef.current &&
-          wsRef.current.readyState !== WebSocket.OPEN
-        ) {
-          wsRef.current.close();
-          wsRef.current = null;
-        }
-      }
-      document.addEventListener("visibilitychange", handleVisibility);
-      return () =>
-        document.removeEventListener("visibilitychange", handleVisibility);
     }
+
+    function handleVisibility() {
+      if (
+        document.visibilityState === "visible" &&
+        wsRef.current &&
+        wsRef.current.readyState !== WebSocket.OPEN
+      ) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, []);
 
-  const pendingPushToken = useRef(null);
-
   const registerPushToken = useCallback((token) => {
-    pendingPushToken.current = token;
+    pendingPushTokenRef.current = token;
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "register-push-token", token }));
     }
   }, []);
 
-  const sendPing = useCallback((toHandle, fromHandle, room) => {
+  const sendPing = useCallback((toHandle, fromHandle, room, options = {}) => {
     const ws = wsRef.current;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(
-        JSON.stringify({ type: "ping", to: toHandle, from: fromHandle, room }),
+        JSON.stringify({
+          type: "ping",
+          to: toHandle,
+          from: fromHandle,
+          room,
+          chatMode: options.chatMode || "ghost",
+        }),
       );
     }
   }, []);
@@ -154,7 +171,6 @@ export function useNotify() {
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "status", handles: handleList }));
     } else {
-      // Will be sent once the socket reconnects
       pendingStatusRef.current = handleList;
     }
   }, []);

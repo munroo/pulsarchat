@@ -5,8 +5,8 @@ export default function Lobby({
   onCreate,
   onJoin,
   onContacts,
+  onSavedMode,
   onLegal,
-  onFeedback,
   onOpenSettings,
   initialCode,
 }) {
@@ -85,18 +85,32 @@ export default function Lobby({
           </div>
         </div>
 
-        <button className={styles.contactsBtn} onClick={onContacts}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          contacts
-        </button>
+        <div className={styles.heroQuickActions}>
+          <button className={styles.contactsBtn} onClick={onContacts}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            contacts
+          </button>
+          <button className={styles.savedModeBtn} onClick={onSavedMode}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M7 4h10a2 2 0 012 2v12l-4-2-3 2-3-2-4 2V6a2 2 0 012-2z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            saved chats
+          </button>
+        </div>
 
         <button className={styles.learnMore} onClick={scrollToInfo}>
           how does it work?
@@ -132,29 +146,42 @@ export default function Lobby({
             <div className={styles.step}>
               <span className={styles.stepNum}>1</span>
               <div>
-                <strong>Create a room, get a code</strong>
+                <strong>Choose ghost mode or saved chats</strong>
                 <p>
-                  One person creates a room and receives a 6-character code. The
-                  signaling server (PeerJS) helps the two browsers discover each
-                  other — this is the only moment a server is involved.
+                  Ghost mode is the original room-code flow: anonymous,
+                  temporary, and history-free. Saved chats keep conversation
+                  history only on your device, with no cloud inbox and no
+                  server-side message storage.
                 </p>
               </div>
             </div>
             <div className={styles.step}>
               <span className={styles.stepNum}>2</span>
               <div>
-                <strong>Direct peer-to-peer connection</strong>
+                <strong>The server only helps peers find each other</strong>
                 <p>
-                  A WebRTC connection is established directly between the two
-                  browsers. From this point, no server relays your data — it
-                  travels browser-to-browser only.
+                  In ghost mode, one person creates a room and shares a short
+                  code. In saved mode, a contact ping can wake the other side.
+                  The signaling layer helps the two devices discover each other,
+                  then gets out of the way.
                 </p>
               </div>
             </div>
             <div className={styles.step}>
               <span className={styles.stepNum}>3</span>
               <div>
-                <strong>ECDH key exchange</strong>
+                <strong>WebRTC connects the two devices directly</strong>
+                <p>
+                  Once discovery is done, chat traffic moves over a direct
+                  peer-to-peer WebRTC data channel. Message content is not
+                  relayed through a central chat server.
+                </p>
+              </div>
+            </div>
+            <div className={styles.step}>
+              <span className={styles.stepNum}>4</span>
+              <div>
+                <strong>Fresh session keys are negotiated per connection</strong>
                 <p>
                   Both browsers generate a fresh, random key pair (P-256 curve).
                   They swap public keys and derive a shared AES-256-GCM
@@ -164,7 +191,7 @@ export default function Lobby({
               </div>
             </div>
             <div className={styles.step}>
-              <span className={styles.stepNum}>4</span>
+              <span className={styles.stepNum}>5</span>
               <div>
                 <strong>Everything is encrypted</strong>
                 <p>
@@ -176,13 +203,13 @@ export default function Lobby({
               </div>
             </div>
             <div className={styles.step}>
-              <span className={styles.stepNum}>5</span>
+              <span className={styles.stepNum}>6</span>
               <div>
-                <strong>Close the tab, it's gone</strong>
+                <strong>Persistence stays local</strong>
                 <p>
-                  When you close the tab, the encryption keys and all messages
-                  are garbage collected from RAM. Nothing is written to disk, no
-                  database, no logs. The conversation ceases to exist.
+                  Ghost chats disappear when the session ends. Saved chats write
+                  history only to your local browser storage, so clearing browser
+                  data or switching devices removes that history by design.
                 </p>
               </div>
             </div>
@@ -318,11 +345,11 @@ export default function Lobby({
               />
             </svg>
           </div>
-          <h2 className={styles.infoTitle}>The tab title trick</h2>
+          <h2 className={styles.infoTitle}>The tab title indicator</h2>
           <p className={styles.infoDesc}>
-            When someone types, their message scrolls live in your browser tab
-            title. You can see what they&apos;re writing without even switching
-            tabs — perfect for discreet conversations at work.
+            If you enable it, the browser tab shows a generic typing indicator
+            when there is live activity. It does not include message text, which
+            helps keep typed content out of browser history and tab previews.
           </p>
         </section>
 
@@ -357,21 +384,6 @@ export default function Lobby({
             stroke="currentColor"
             strokeWidth="1.3"
             strokeLinecap="round"
-          />
-        </svg>
-      </button>
-      <button
-        className={styles.floatingFeedback}
-        onClick={onFeedback}
-        title="send feedback"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path
-            d="M14 1H2a1 1 0 00-1 1v8a1 1 0 001 1h2v3l3-3h7a1 1 0 001-1V2a1 1 0 00-1-1z"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
           />
         </svg>
       </button>
