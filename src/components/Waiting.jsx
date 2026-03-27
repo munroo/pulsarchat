@@ -8,7 +8,7 @@ export default function Waiting({
   loading,
   onOpenSettings,
 }) {
-  const shareUrl = `${import.meta.env.VITE_APP_URL ?? ""}/?room=${roomCode}`;
+  const shareUrl = `${import.meta.env.VITE_APP_URL ?? ""}https://www.pulsarchat.space/?room=${roomCode}`;
 
   function copyCode() {
     navigator.clipboard.writeText(roomCode).then(() => onToast("code copied!"));

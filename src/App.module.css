@@ -24,7 +24,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 150px;
+  min-width: fit-content;
   width: auto;
   white-space: nowrap;
   gap: 8px;
@@ -44,6 +44,7 @@
 }
 
 .btnGhost {
+  width: 150px;
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
@@ -1055,6 +1056,7 @@
 .contactsBtn {
   display: inline-flex;
   align-items: center;
+  width: 150px;
   gap: 6px;
   padding: 8px 16px;
   background: none;
@@ -1071,6 +1073,11 @@
 .contactsBtn:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+.contactsBtn,
+.savedModeBtn {
+  justify-content: center;
 }
 
 /* ── Legal link in footer ───────────────────────────── */
@@ -1156,6 +1163,8 @@
 .savedModeBtn {
   display: inline-flex;
   align-items: center;
+  width: 150px;
+
   gap: 6px;
   padding: 8px 16px;
   background: color-mix(in srgb, var(--accent) 10%, transparent);
@@ -2321,12 +2330,6 @@
     width: 100%;
   }
 
-  .contactsBtn,
-  .savedModeBtn {
-    justify-content: center;
-    flex: 1;
-  }
-
   .newChatInputRow {
     flex-direction: column;
     align-items: stretch;
@@ -2339,4 +2342,13 @@
   .conversationMeta {
     gap: 4px;
   }
+}
+
+button,
+a,
+[role="button"],
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
 }

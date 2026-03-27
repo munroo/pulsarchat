@@ -1,3 +1,7 @@
+import { Capacitor } from "@capacitor/core";
+
+let hasWarnedMissingNativeServerUrl = false;
+
 function parseConfiguredServerUrl() {
   const raw = import.meta.env.VITE_SERVER_URL?.trim();
   if (!raw) return null;
@@ -23,8 +27,17 @@ function parseConfiguredServerUrl() {
   }
 }
 
+function isNativeRuntime() {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
 function getLocalDevServerConfig() {
   if (typeof window === "undefined") return null;
+  if (isNativeRuntime()) return null;
 
   const { hostname, origin, protocol, port } = window.location;
   const isLocalHost =
@@ -47,5 +60,18 @@ function getLocalDevServerConfig() {
 }
 
 export function getServerConfig() {
-  return parseConfiguredServerUrl() || getLocalDevServerConfig();
+  const configured = parseConfiguredServerUrl();
+  if (configured) return configured;
+
+  const localDev = getLocalDevServerConfig();
+  if (localDev) return localDev;
+
+  if (isNativeRuntime() && !hasWarnedMissingNativeServerUrl) {
+    hasWarnedMissingNativeServerUrl = true;
+    console.warn(
+      "[serverConfig] Native builds require VITE_SERVER_URL. Same-origin localhost proxying only works in browser-local development.",
+    );
+  }
+
+  return null;
 }

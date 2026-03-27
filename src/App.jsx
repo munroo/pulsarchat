@@ -5,8 +5,14 @@ import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useSettings } from "./hooks/useSettings";
 import { APP_VIEW, useAppNavigation } from "./hooks/useAppNavigation";
 import { useActiveSavedChats } from "./hooks/useActiveSavedChats";
-import { getInitialRoomCode, getInitialSavedInvite } from "./utils/url";
+import {
+  getInitialAddContactHandle,
+  getInitialRoomCode,
+  getInitialSavedInvite,
+} from "./utils/url";
 import { APP_TITLE } from "./utils/notify";
+import { addContact, getContacts } from "./utils/contacts";
+import { getIdentity } from "./utils/identity";
 const Background = lazy(() => import("./components/Background"));
 import ActiveSavedChatConnection from "./components/ActiveSavedChatConnection";
 import Lobby from "./components/Lobby";
@@ -24,6 +30,8 @@ import styles from "./App.module.css";
 
 const initialCode = getInitialRoomCode();
 const initialSavedInvite = initialCode ? null : getInitialSavedInvite();
+const initialAddContactHandle =
+  initialCode || initialSavedInvite ? "" : getInitialAddContactHandle();
 
 export default function App() {
   const { screen, roomCode, conn, sharedKey, toast, loading, actions } =
@@ -54,6 +62,7 @@ export default function App() {
   const [renderSettings, setRenderSettings] = useState(false);
   const [settingsFingerprint, setSettingsFingerprint] = useState(null);
   const [pendingPingTarget, setPendingPingTarget] = useState(null);
+  const processedInitialAddContactRef = useRef(false);
   const showSavedChatRef = useRef(null);
   const savedChatContactRef = useRef(null);
   const feedbackReturnViewRef = useRef(APP_VIEW.LOBBY);
@@ -130,6 +139,47 @@ export default function App() {
       window.history.replaceState(null, APP_TITLE, window.location.pathname);
     }
   }, [handleOpenSavedChat, joinRoom, switchToGhostMode]);
+
+  useEffect(() => {
+    if (!initialAddContactHandle || processedInitialAddContactRef.current) return;
+
+    let cancelled = false;
+    processedInitialAddContactRef.current = true;
+
+    async function saveSharedContact() {
+      const identity = await getIdentity().catch(() => null);
+      if (cancelled) return;
+
+      if (identity?.handle === initialAddContactHandle) {
+        showToast("that's your handle");
+      } else {
+        const existingContacts = await getContacts();
+        if (cancelled) return;
+
+        const existingContact = existingContacts.find(
+          (contact) => contact.handle === initialAddContactHandle,
+        );
+
+        if (existingContact) {
+          showToast("contact already added");
+        } else {
+          await addContact(initialAddContactHandle, initialAddContactHandle);
+          if (cancelled) return;
+          showToast("contact added");
+        }
+      }
+
+      switchToGhostMode();
+      setView(APP_VIEW.CONTACTS);
+      window.history.replaceState(null, APP_TITLE, window.location.pathname);
+    }
+
+    saveSharedContact();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setView, showToast, switchToGhostMode]);
 
   useEffect(() => {
     if (screen === "waiting" && roomCode && pendingPingTarget && notifyHandle) {
