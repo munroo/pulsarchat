@@ -1,14 +1,21 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePeer } from "./hooks/usePeer";
 import { useNotify } from "./hooks/useNotify";
 import { usePushNotifications } from "./hooks/usePushNotifications";
 import { useSettings } from "./hooks/useSettings";
-import { getInitialRoomCode } from "./utils/url";
+import { APP_VIEW, useAppNavigation } from "./hooks/useAppNavigation";
+import { useActiveSavedChats } from "./hooks/useActiveSavedChats";
+import { getInitialRoomCode, getInitialSavedInvite } from "./utils/url";
+import { APP_TITLE } from "./utils/notify";
 const Background = lazy(() => import("./components/Background"));
+import ActiveSavedChatConnection from "./components/ActiveSavedChatConnection";
 import Lobby from "./components/Lobby";
 import Waiting from "./components/Waiting";
 import Chat from "./components/Chat";
 import Contacts from "./components/Contacts";
+import ConversationList from "./components/ConversationList";
+import SavedChat from "./components/SavedChat";
+import ProfileEditor from "./components/ProfileEditor";
 import Legal from "./components/Legal";
 import Feedback from "./components/Feedback";
 import Settings from "./components/Settings";
@@ -16,113 +23,295 @@ import Toast from "./components/Toast";
 import styles from "./App.module.css";
 
 const initialCode = getInitialRoomCode();
+const initialSavedInvite = initialCode ? null : getInitialSavedInvite();
 
 export default function App() {
   const { screen, roomCode, conn, sharedKey, toast, loading, actions } =
     usePeer();
+  const { createRoom, joinRoom, backToLobby, showToast } = actions;
   const notify = useNotify();
-  usePushNotifications(notify.registerPushToken);
-  const { settings, setSetting } = useSettings();
-  const [showSettings, setShowSettings] = useState(false);
-  const [settingsFingerprint, setSettingsFingerprint] = useState(null);
+  const {
+    handle: notifyHandle,
+    incomingPing,
+    sendPing,
+    dismissPing,
+    registerPushToken,
+  } = notify;
+  usePushNotifications(registerPushToken);
 
-  function openSettings(fp = null) {
-    setSettingsFingerprint(fp);
-    setShowSettings(true);
+  const { settings, setSetting } = useSettings();
+  const {
+    mode,
+    view,
+    savedChatContact,
+    setView,
+    switchToSavedMode,
+    switchToGhostMode,
+    openSavedChat,
+  } = useAppNavigation();
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [renderSettings, setRenderSettings] = useState(false);
+  const [settingsFingerprint, setSettingsFingerprint] = useState(null);
+  const [pendingPingTarget, setPendingPingTarget] = useState(null);
+  const showSavedChatRef = useRef(null);
+  const savedChatContactRef = useRef(null);
+  const feedbackReturnViewRef = useRef(APP_VIEW.LOBBY);
+  const {
+    sessions: activeSavedSessions,
+    refreshKey: savedChatRefreshKey,
+    connectedHandles,
+    openChat: openActiveSavedChat,
+    closeChat: closeActiveSavedChat,
+    disconnectAll: disconnectAllSavedChats,
+    startQueuedHosts,
+    registerSessionState,
+    registerSessionControls,
+    notifyPersistedChange,
+    markMessageActivity,
+    getSession: getActiveSavedChat,
+  } = useActiveSavedChats();
+  const activeSavedChat = savedChatContact
+    ? getActiveSavedChat(savedChatContact.handle)
+    : null;
+
+  function openSettings(fingerprint = null) {
+    setSettingsFingerprint(fingerprint);
+    setRenderSettings(true);
+    requestAnimationFrame(() => setShowSettings(true));
   }
 
-  // Track which screen the lobby-level nav is showing
-  // "lobby" | "contacts" — the peer screens (waiting/chat) take priority
-  const [lobbyView, setLobbyView] = useState("lobby");
+  const closeSettings = useCallback(() => {
+    setShowSettings(false);
+  }, []);
 
-  // When a ping is sent, remember the target so we can fire it once
-  // the room code is known (after createRoom resolves)
-  const [pendingPingTarget, setPendingPingTarget] = useState(null);
+  const handleSettingsExited = useCallback(() => {
+    setRenderSettings(false);
+    setSettingsFingerprint(null);
+  }, []);
+
+  const handleOpenFeedback = useCallback(() => {
+    feedbackReturnViewRef.current = view;
+    setShowSettings(false);
+    setView(APP_VIEW.FEEDBACK);
+  }, [setView, view]);
+
+  const handleOpenSavedChat = useCallback(
+    ({ handle, nickname, initialRoomCode }) => {
+      openActiveSavedChat({
+        handle,
+        nickname,
+        initialRoomCode,
+        visible: true,
+      });
+      openSavedChat({ handle, nickname, initialRoomCode });
+    },
+    [openActiveSavedChat, openSavedChat],
+  );
+
+  const handleSwitchToGhostMode = useCallback(() => {
+    disconnectAllSavedChats();
+    switchToGhostMode();
+  }, [disconnectAllSavedChats, switchToGhostMode]);
 
   useEffect(() => {
     if (initialCode) {
-      actions.joinRoom(initialCode);
+      switchToGhostMode();
+      joinRoom(initialCode);
+      return;
     }
-  }, []);
 
-  // As soon as we're in the waiting screen with a room code and a pending
-  // ping target, send the ping and clear the target
+    if (initialSavedInvite) {
+      handleOpenSavedChat({
+        handle: initialSavedInvite.handle,
+        nickname: initialSavedInvite.handle,
+        initialRoomCode: initialSavedInvite.roomCode,
+      });
+      window.history.replaceState(null, APP_TITLE, window.location.pathname);
+    }
+  }, [handleOpenSavedChat, joinRoom, switchToGhostMode]);
+
   useEffect(() => {
-    if (screen === "waiting" && roomCode && pendingPingTarget) {
-      notify.sendPing(pendingPingTarget.handle, notify.handle, roomCode);
+    if (screen === "waiting" && roomCode && pendingPingTarget && notifyHandle) {
+      sendPing(pendingPingTarget.handle, notifyHandle, roomCode, {
+        chatMode: "ghost",
+      });
       setPendingPingTarget(null);
     }
-  }, [screen, roomCode, pendingPingTarget]);
+  }, [notifyHandle, pendingPingTarget, roomCode, screen, sendPing]);
+
+  // Saved-mode pings: reconnect if already in that chat, otherwise deliver in background.
+  useEffect(() => {
+    if (!incomingPing || incomingPing.chatMode !== "saved") return;
+    const ping = incomingPing;
+    dismissPing();
+
+    if (showSavedChatRef.current && savedChatContactRef.current?.handle === ping.from) {
+      openActiveSavedChat({
+        handle: ping.from,
+        nickname: savedChatContactRef.current.nickname || ping.from,
+        initialRoomCode: ping.room,
+        visible: true,
+      });
+      return;
+    }
+
+    openActiveSavedChat({
+      handle: ping.from,
+      nickname: savedChatContactRef.current?.nickname || ping.from,
+      initialRoomCode: ping.room,
+      visible: false,
+    });
+    showToast(`${ping.from} wants to chat`);
+  }, [dismissPing, incomingPing, openActiveSavedChat, showToast]);
+
+  useEffect(() => {
+    if (mode !== "saved") return;
+    startQueuedHosts();
+  }, [mode, startQueuedHosts]);
 
   function handlePingContact(contact) {
     setPendingPingTarget(contact);
-    setLobbyView("lobby");
-    actions.createRoom();
+    handleSwitchToGhostMode();
+    createRoom();
   }
 
   function handleIncomingJoin() {
-    if (!notify.incomingPing) return;
-    const room = notify.incomingPing.room;
-    notify.dismissPing();
-    actions.joinRoom(room);
+    if (!incomingPing) return;
+    const ping = incomingPing;
+    dismissPing();
+    handleSwitchToGhostMode();
+    joinRoom(ping.room);
   }
 
-  // Peer screens override the lobby-level nav
   const activePeerScreen = screen !== "lobby" ? screen : null;
-  const showLobby = !activePeerScreen && lobbyView === "lobby";
-  const showContacts = !activePeerScreen && lobbyView === "contacts";
-  const showLegal = !activePeerScreen && lobbyView === "legal";
-  const showFeedback = !activePeerScreen && lobbyView === "feedback";
+  const showGhostLobby =
+    !activePeerScreen &&
+    mode === "ghost" &&
+    view === APP_VIEW.LOBBY;
+  const showContacts =
+    !activePeerScreen &&
+    mode === "ghost" &&
+    view === APP_VIEW.CONTACTS;
+  const showLegal =
+    !activePeerScreen &&
+    mode === "ghost" &&
+    view === APP_VIEW.LEGAL;
+  const showFeedback =
+    !activePeerScreen &&
+    view === APP_VIEW.FEEDBACK;
+  const showConversations =
+    !activePeerScreen &&
+    mode === "saved" &&
+    view === APP_VIEW.CONVERSATIONS;
+  const showSavedChat =
+    !activePeerScreen &&
+    mode === "saved" &&
+    view === APP_VIEW.SAVED_CHAT &&
+    savedChatContact;
+  const showProfileEditor =
+    !activePeerScreen &&
+    mode === "saved" &&
+    view === APP_VIEW.PROFILE_EDIT;
+
+  // Keep refs up-to-date for use inside effects without stale-closure issues.
+  showSavedChatRef.current = showSavedChat;
+  savedChatContactRef.current = savedChatContact;
 
   return (
     <>
-      <Suspense fallback={null}><Background /></Suspense>
+      <Suspense fallback={null}>
+        <Background />
+      </Suspense>
 
-      {showSettings && (
+      {renderSettings && (
         <Settings
+          isOpen={showSettings}
           settings={settings}
           setSetting={setSetting}
-          onClose={() => setShowSettings(false)}
+          onClose={closeSettings}
+          onExited={handleSettingsExited}
           fingerprint={settingsFingerprint}
+          onOpenFeedback={handleOpenFeedback}
+          showFeedbackAction={!activePeerScreen}
         />
       )}
 
-      {showLobby && (
+      {showGhostLobby && (
         <Lobby
-          onCreate={actions.createRoom}
-          onJoin={actions.joinRoom}
-          onContacts={() => setLobbyView("contacts")}
-          onLegal={() => setLobbyView("legal")}
-          onFeedback={() => setLobbyView("feedback")}
+          onCreate={createRoom}
+          onJoin={joinRoom}
+          onContacts={() => setView(APP_VIEW.CONTACTS)}
+          onSavedMode={switchToSavedMode}
+          onLegal={() => setView(APP_VIEW.LEGAL)}
           onOpenSettings={() => openSettings()}
           initialCode={initialCode}
         />
       )}
 
-      {showLegal && <Legal onBack={() => setLobbyView("lobby")} />}
+      {showLegal && <Legal onBack={() => setView(APP_VIEW.LOBBY)} />}
 
       {showFeedback && (
         <Feedback
-          onBack={() => setLobbyView("lobby")}
-          onToast={actions.showToast}
+          onBack={() => setView(feedbackReturnViewRef.current || APP_VIEW.LOBBY)}
+          onToast={showToast}
         />
       )}
 
       {showContacts && (
         <Contacts
-          onBack={() => setLobbyView("lobby")}
+          onBack={() => setView(APP_VIEW.LOBBY)}
           onPingContact={handlePingContact}
           notify={notify}
-          onToast={actions.showToast}
+          onToast={showToast}
           onOpenSettings={() => openSettings()}
+        />
+      )}
+
+      {showConversations && (
+        <ConversationList
+          onOpenSavedChat={handleOpenSavedChat}
+          onEditProfile={() => setView(APP_VIEW.PROFILE_EDIT)}
+          onGhostMode={handleSwitchToGhostMode}
+          onOpenSettings={() => openSettings()}
+          notify={notify}
+          refreshKey={savedChatRefreshKey}
+          connectedHandles={connectedHandles}
+        />
+      )}
+
+      {showSavedChat && (
+        <SavedChat
+          contact={savedChatContact}
+          session={activeSavedChat}
+          onBack={() => {
+            closeActiveSavedChat(savedChatContact.handle);
+            setView(APP_VIEW.CONVERSATIONS);
+          }}
+          onToast={showToast}
+          settings={settings}
+          onOpenSettings={openSettings}
+          onConversationChanged={notifyPersistedChange}
+          onMessageActivity={markMessageActivity}
+        />
+      )}
+
+      {showProfileEditor && (
+        <ProfileEditor
+          onClose={() => setView(APP_VIEW.CONVERSATIONS)}
+          onSaved={() => {
+            showToast("profile saved");
+            setView(APP_VIEW.CONVERSATIONS);
+          }}
+          onToast={showToast}
         />
       )}
 
       {activePeerScreen === "waiting" && (
         <Waiting
           roomCode={roomCode}
-          onBack={actions.backToLobby}
-          onToast={actions.showToast}
+          onBack={backToLobby}
+          onToast={showToast}
           loading={loading}
           onOpenSettings={() => openSettings()}
         />
@@ -133,18 +322,28 @@ export default function App() {
           roomCode={roomCode}
           conn={conn}
           sharedKey={sharedKey}
-          onLeave={actions.backToLobby}
-          onToast={actions.showToast}
+          onLeave={backToLobby}
           settings={settings}
-          setSetting={setSetting}
           onOpenSettings={openSettings}
         />
       )}
 
       <Toast message={toast} />
 
-      {/* ── Incoming ping modal ──────────────────────── */}
-      {notify.incomingPing && (
+      {activeSavedSessions.map((session) => (
+          <ActiveSavedChatConnection
+            key={session.handle}
+            session={session}
+            notify={notify}
+            onStateChange={registerSessionState}
+            onControlsChange={registerSessionControls}
+            onConversationChanged={notifyPersistedChange}
+            onMessageActivity={markMessageActivity}
+            onHiddenMessage={(_, message) => showToast(message)}
+          />
+        ))}
+
+      {incomingPing && incomingPing.chatMode !== "saved" && (
         <div className={styles.pingOverlay}>
           <div className={styles.pingCard}>
             <div className={styles.pingIcon}>
@@ -160,22 +359,24 @@ export default function App() {
             </div>
             <div className={styles.pingTitle}>
               <span className={styles.pingFrom}>
-                {notify.incomingPing.from}
+                {incomingPing.from}
               </span>{" "}
               wants to chat
             </div>
             <p className={styles.pingSubtitle}>
-              room&nbsp;·&nbsp;{notify.incomingPing.room}
+              {incomingPing.chatMode === "saved"
+                ? `saved chat · ${incomingPing.room}`
+                : `room · ${incomingPing.room}`}
             </p>
             <div className={styles.pingActions}>
               <button
                 className={`${styles.btn} ${styles.btnGhost}`}
-                onClick={notify.dismissPing}
+                onClick={dismissPing}
               >
                 ignore
               </button>
               <button className={styles.btn} onClick={handleIncomingJoin}>
-                join
+                {incomingPing.chatMode === "saved" ? "open" : "join"}
               </button>
             </div>
           </div>

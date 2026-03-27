@@ -83,6 +83,10 @@ export async function addContact(handle, nickname) {
   }
 }
 
+export function updateContactNickname(handle, nickname) {
+  return addContact(handle, nickname);
+}
+
 export async function deleteContact(handle) {
   if (!idbAvailable()) {
     const idx = memContacts.findIndex((c) => c.handle === handle);

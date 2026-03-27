@@ -69,10 +69,16 @@ wss.on("connection", (ws, handle) => {
     }
 
     if (msg.type === "ping") {
+      const chatMode = msg.chatMode === "saved" ? "saved" : "ghost";
       const target = handles.get(msg.to);
       if (target && target.readyState === ws.OPEN) {
         target.send(
-          JSON.stringify({ type: "ping", from: msg.from, room: msg.room }),
+          JSON.stringify({
+            type: "ping",
+            from: msg.from,
+            room: msg.room,
+            chatMode,
+          }),
         );
       } else {
         const pushToken = pushTokens.get(msg.to);
@@ -89,6 +95,7 @@ wss.on("connection", (ws, handle) => {
                 type: "ping",
                 senderHandle: msg.from,
                 room: msg.room,
+                chatMode,
               },
               android: {
                 priority: "high",
@@ -137,6 +144,11 @@ server.on("upgrade", (req, socket, head) => {
   const { pathname, query } = parse(req.url, true);
 
   if (pathname === "/notify") {
+    const rejectUpgrade = (reason) => {
+      console.warn(`[notify] rejected upgrade: ${reason}`);
+      socket.destroy();
+    };
+
     // Origin check (skip in dev when NODE_ENV is explicitly set)
     if (process.env.NODE_ENV !== "development") {
       const origin = req.headers.origin;
@@ -145,7 +157,7 @@ server.on("upgrade", (req, socket, head) => {
           ALLOWED_ORIGINS.some((o) => origin.startsWith(o)) ||
           origin.includes(".vercel.app");
         if (!allowed) {
-          socket.destroy();
+          rejectUpgrade(`origin ${origin}`);
           return;
         }
       }
@@ -155,14 +167,14 @@ server.on("upgrade", (req, socket, head) => {
     const handle = query.handle;
     const token = query.token;
     if (!handle || !token) {
-      socket.destroy();
+      rejectUpgrade("missing handle or token");
       return;
     }
 
     // Token auth: reject if a different token is already registered for this handle
     const existingToken = handleTokens.get(handle);
     if (existingToken && existingToken !== token) {
-      socket.destroy();
+      rejectUpgrade(`token mismatch for ${handle}`);
       return;
     }
 
@@ -177,7 +189,7 @@ server.on("upgrade", (req, socket, head) => {
     rate.count++;
     connectionRates.set(ip, rate);
     if (rate.count > MAX_CONNECTIONS_PER_MINUTE) {
-      socket.destroy();
+      rejectUpgrade(`rate limit for ${ip}`);
       return;
     }
 
@@ -188,6 +200,7 @@ server.on("upgrade", (req, socket, head) => {
   } else if (pathname.startsWith("/peerjs")) {
     dummyServer.emit("upgrade", req, socket, head);
   } else {
+    console.warn(`[ws] rejected upgrade: ${pathname}`);
     socket.destroy();
   }
 });

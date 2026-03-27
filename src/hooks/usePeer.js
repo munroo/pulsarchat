@@ -1,252 +1,154 @@
-import { useState, useRef, useCallback } from "react";
-import Peer from "peerjs";
+import { useCallback, useRef, useState } from "react";
 import { generateCode } from "../utils/roomCode";
-import {
-  generateKeyPair,
-  exportPublicKey,
-  importPublicKey,
-  deriveSharedKey,
-} from "../utils/crypto";
-
-/**
- * usePeer — manages PeerJS lifecycle, ICE config, and E2EE handshake.
- *
- * Returns:
- *  { screen, roomCode, conn, sharedKey, actions }
- *
- * `sharedKey` is a CryptoKey (AES-GCM) derived after ECDH handshake.
- * It's null until the handshake completes; Chat should wait for it.
- */
-
-function getIceServers() {
-  const servers = [{ urls: "stun:stun.l.google.com:19302" }];
-  if (import.meta.env.VITE_TURN_URL) {
-    servers.push({
-      urls: import.meta.env.VITE_TURN_URL,
-      username: import.meta.env.VITE_TURN_USERNAME,
-      credential: import.meta.env.VITE_TURN_CREDENTIAL,
-    });
-  }
-  return servers;
-}
-
-const _serverUrl = import.meta.env.VITE_SERVER_URL ?? "";
-const _serverHttpBase = _serverUrl.replace(/^wss:\/\//, "https://").replace(/^ws:\/\//, "http://");
-const _serverHost = (() => { try { return new URL(_serverHttpBase).hostname; } catch { return ""; } })();
-const _serverSecure = _serverUrl.startsWith("wss://") || _serverUrl.startsWith("https://");
-
-async function wakeServer() {
-  await fetch(`${_serverHttpBase}/peerjs`).catch(() => {});
-}
-
-function makePeer(id, iceServers) {
-  return new Peer(id, {
-    host: _serverHost,
-    path: "/peerjs",
-    secure: _serverSecure,
-    config: { iceServers },
-    pingInterval: 5000,
-  });
-}
-
-// ── E2EE handshake over data channel ───────────────────
-
-function performHandshake(conn, setSharedKey) {
-  if (!crypto?.subtle) {
-    return Promise.reject(
-      new Error(
-        "E2EE requires HTTPS or localhost — current origin is insecure",
-      ),
-    );
-  }
-
-  return new Promise((resolve, reject) => {
-    let resolved = false;
-    let remotePubArray = null;
-    let localKeyPair = null;
-    let localPubExported = null;
-    let retryTimer = null;
-
-    // 1. Register listener FIRST — before any async work
-    const onData = (data) => {
-      if (data?.type === "__pubkey") {
-        conn.off("data", onData);
-        remotePubArray = data.key;
-        tryDerive();
-      }
-    };
-    conn.on("data", onData);
-
-    // 2. Generate keys (async), then send ours
-    generateKeyPair()
-      .then(async (kp) => {
-        localKeyPair = kp;
-        localPubExported = await exportPublicKey(kp.publicKey);
-        conn.send({ type: "__pubkey", key: localPubExported });
-        retryTimer = setInterval(() => {
-          if (!resolved && conn.open) {
-            conn.send({ type: "__pubkey", key: localPubExported });
-          }
-        }, 500);
-        tryDerive();
-      })
-      .catch(reject);
-
-    // 3. Derive shared key once we have BOTH sides
-    function tryDerive() {
-      if (resolved || !remotePubArray || !localKeyPair) return;
-      resolved = true;
-      if (retryTimer) clearInterval(retryTimer);
-      importPublicKey(remotePubArray)
-        .then((remotePub) =>
-          deriveSharedKey(localKeyPair.privateKey, remotePub),
-        )
-        .then((key) => {
-          setSharedKey(key);
-          resolve(key);
-        })
-        .catch(reject);
-    }
-
-    // 4. Timeout safety
-    setTimeout(() => {
-      if (!resolved) {
-        if (retryTimer) clearInterval(retryTimer);
-        conn.off("data", onData);
-        reject(new Error("E2EE handshake timed out"));
-      }
-    }, 15000);
-  });
-}
-
-// ── Hook ───────────────────────────────────────────────
+import { createPeerClient, wakePeerServer } from "../chat/peerClient";
+import { performSecureHandshake } from "../chat/secureHandshake";
+import { APP_TITLE } from "../utils/notify";
 
 export function usePeer() {
-  const [screen, setScreen] = useState("lobby"); // lobby | waiting | chat
+  const [screen, setScreen] = useState("lobby");
   const [roomCode, setRoomCode] = useState("");
   const [conn, setConn] = useState(null);
   const [sharedKey, setSharedKey] = useState(null);
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState("");
+
   const peerRef = useRef(null);
 
-  function showToast(msg) {
-    setToast(msg);
+  const showToast = useCallback((message) => {
+    setToast(message);
     setTimeout(() => setToast(""), 2000);
-  }
+  }, []);
 
-  function destroyPeer() {
+  const destroyPeer = useCallback(() => {
     peerRef.current?.destroy();
     peerRef.current = null;
-  }
-
-  // ── Create room (host) ────────────────────────────────
+  }, []);
 
   const createRoom = useCallback(async () => {
     destroyPeer();
+    setConn(null);
+    setSharedKey(null);
+
     const code = generateCode();
     setRoomCode(code);
     setScreen("waiting");
     setLoading("waking up server…");
-    window.history.replaceState(null, "", `?room=${code}`);
+    window.history.replaceState(null, APP_TITLE, `?room=${code}`);
 
-    await wakeServer();
+    await wakePeerServer();
 
-    const iceServers = getIceServers();
     setLoading("");
-    const p = makePeer(code, iceServers);
-    peerRef.current = p;
+    const peer = createPeerClient(code);
+    peerRef.current = peer;
 
     let connected = false;
 
-    p.on("connection", (c) => {
+    peer.on("connection", (nextConn) => {
       if (connected) {
-        c.close();
+        nextConn.close();
         return;
       }
+
       connected = true;
-      setConn(c);
+      setConn(nextConn);
       setLoading("encrypting connection…");
-      c.on("open", () => {
-        performHandshake(c, setSharedKey)
-          .then(() => {
+
+      nextConn.on("open", () => {
+        performSecureHandshake(nextConn)
+          .then((key) => {
+            setSharedKey(key);
             setLoading("");
             setScreen("chat");
           })
-          .catch((err) => {
-            console.error("Handshake failed (host):", err);
-            showToast(err.message || "encryption handshake failed");
+          .catch((error) => {
+            console.error("Handshake failed (host):", error);
+            showToast(error.message || "encryption handshake failed");
             connected = false;
+            setConn(null);
+            setSharedKey(null);
+            setLoading("");
+            nextConn.close();
           });
+      });
+
+      nextConn.on("close", () => {
+        connected = false;
+      });
+
+      nextConn.on("error", () => {
+        connected = false;
       });
     });
 
-    p.on("error", (e) => {
-      if (e.type === "unavailable-id") {
+    peer.on("error", (error) => {
+      if (error?.type === "unavailable-id") {
         destroyPeer();
         setTimeout(createRoom, 100);
       }
     });
-  }, []);
-
-  // ── Join room (guest) ─────────────────────────────────
+  }, [destroyPeer, showToast]);
 
   const joinRoom = useCallback(async (code) => {
     destroyPeer();
-    const upper = code.toUpperCase();
-    setRoomCode(upper);
+    setConn(null);
+    setSharedKey(null);
+
+    const upperCode = code.toUpperCase();
+    setRoomCode(upperCode);
     setScreen("waiting");
     setLoading("waking up server…");
-    window.history.replaceState(null, "", `?room=${upper}`);
+    window.history.replaceState(null, APP_TITLE, `?room=${upperCode}`);
 
-    await wakeServer();
+    await wakePeerServer();
+
     setLoading("connecting…");
+    const peer = createPeerClient();
+    peerRef.current = peer;
 
-    const iceServers = getIceServers();
-    const p = makePeer(undefined, iceServers);
-    peerRef.current = p;
-
-    p.on("open", () => {
+    peer.on("open", () => {
       setLoading("joining room…");
-      const c = p.connect(upper, { reliable: true });
-      setConn(c);
+      const nextConn = peer.connect(upperCode, { reliable: true });
+      setConn(nextConn);
 
-      c.on("open", () => {
+      nextConn.on("open", () => {
         setLoading("encrypting connection…");
-        performHandshake(c, setSharedKey)
-          .then(() => {
+        performSecureHandshake(nextConn)
+          .then((key) => {
+            setSharedKey(key);
             setLoading("");
             setScreen("chat");
           })
-          .catch((err) => {
-            console.error("Handshake failed (guest):", err);
-            showToast(err.message || "encryption handshake failed");
+          .catch((error) => {
+            console.error("Handshake failed (guest):", error);
+            showToast(error.message || "encryption handshake failed");
+            setLoading("");
             setScreen("lobby");
           });
       });
 
-      c.on("error", () => {
+      nextConn.on("error", () => {
         showToast("could not reach that room");
+        setLoading("");
         setScreen("lobby");
       });
     });
 
-    p.on("error", () => {
+    peer.on("error", () => {
       showToast("connection failed");
+      setLoading("");
       setScreen("lobby");
     });
-  }, []);
-
-  // ── Back to lobby ─────────────────────────────────────
+  }, [destroyPeer, showToast]);
 
   const backToLobby = useCallback(() => {
     destroyPeer();
     setConn(null);
     setSharedKey(null);
     setRoomCode("");
-    window.history.replaceState(null, "", window.location.pathname);
+    setLoading("");
+    window.history.replaceState(null, APP_TITLE, window.location.pathname);
     setScreen("lobby");
-  }, []);
+  }, [destroyPeer]);
 
   return {
     screen,
@@ -255,6 +157,11 @@ export function usePeer() {
     sharedKey,
     toast,
     loading,
-    actions: { createRoom, joinRoom, backToLobby, showToast },
+    actions: {
+      createRoom,
+      joinRoom,
+      backToLobby,
+      showToast,
+    },
   };
 }
