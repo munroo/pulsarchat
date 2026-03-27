@@ -9,6 +9,8 @@
  * handle is the primary key.
  */
 
+import { normalizeHandle } from "./handle";
+
 const DB_NAME = "pulsarchat_contacts";
 const STORE = "contacts";
 
@@ -58,9 +60,13 @@ export async function getContacts() {
 }
 
 export async function addContact(handle, nickname) {
-  const contact = { handle, nickname: nickname || handle };
+  const normalizedHandle = normalizeHandle(handle);
+  const contact = {
+    handle: normalizedHandle,
+    nickname: nickname || normalizedHandle,
+  };
   if (!idbAvailable()) {
-    const idx = memContacts.findIndex((c) => c.handle === handle);
+    const idx = memContacts.findIndex((c) => c.handle === normalizedHandle);
     if (idx >= 0) memContacts[idx] = contact;
     else memContacts.push(contact);
     return;
@@ -77,7 +83,7 @@ export async function addContact(handle, nickname) {
     });
   } catch (e) {
     warnFallback(e);
-    const idx = memContacts.findIndex((c) => c.handle === handle);
+    const idx = memContacts.findIndex((c) => c.handle === normalizedHandle);
     if (idx >= 0) memContacts[idx] = contact;
     else memContacts.push(contact);
   }
@@ -88,8 +94,9 @@ export function updateContactNickname(handle, nickname) {
 }
 
 export async function deleteContact(handle) {
+  const normalizedHandle = normalizeHandle(handle);
   if (!idbAvailable()) {
-    const idx = memContacts.findIndex((c) => c.handle === handle);
+    const idx = memContacts.findIndex((c) => c.handle === normalizedHandle);
     if (idx >= 0) memContacts.splice(idx, 1);
     return;
   }
@@ -99,13 +106,13 @@ export async function deleteContact(handle) {
       const req = db
         .transaction(STORE, "readwrite")
         .objectStore(STORE)
-        .delete(handle);
+        .delete(normalizedHandle);
       req.onsuccess = () => resolve();
       req.onerror = (e) => reject(e.target.error);
     });
   } catch (e) {
     warnFallback(e);
-    const idx = memContacts.findIndex((c) => c.handle === handle);
+    const idx = memContacts.findIndex((c) => c.handle === normalizedHandle);
     if (idx >= 0) memContacts.splice(idx, 1);
   }
 }

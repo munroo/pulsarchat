@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getContacts } from "../utils/contacts";
+import { formatHandleInput, normalizeHandle } from "../utils/handle";
 import {
   listConversations,
   markConversationRead,
@@ -89,7 +90,7 @@ export default function ConversationList({
   }
 
   function handleNewHandleSubmit() {
-    const handle = newHandleInput.trim().toUpperCase();
+    const handle = normalizeHandle(newHandleInput);
     if (handle.length >= 4) {
       startChatWith(handle, handle);
     }
@@ -246,7 +247,7 @@ export default function ConversationList({
                 className={styles.newChatInput}
                 placeholder="handle (e.g. NOVA-3KF8)"
                 value={newHandleInput}
-                onChange={(event) => setNewHandleInput(event.target.value.toUpperCase())}
+                onChange={(event) => setNewHandleInput(formatHandleInput(event.target.value))}
                 onKeyDown={(event) => event.key === "Enter" && handleNewHandleSubmit()}
                 autoFocus
               />

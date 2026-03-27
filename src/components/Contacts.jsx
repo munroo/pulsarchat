@@ -6,6 +6,8 @@ import {
   updateContactNickname,
 } from "../utils/contacts";
 import { handleShare } from "../utils/share";
+import { buildAddContactUrl } from "../utils/url";
+import { formatHandleInput, normalizeHandle } from "../utils/handle";
 import styles from "../App.module.css";
 
 export default function Contacts({ onBack, onPingContact, notify, onToast, onOpenSettings }) {
@@ -14,6 +16,7 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
   const [nickInput, setNickInput] = useState("");
   const [editingHandle, setEditingHandle] = useState(null);
   const [editingNickname, setEditingNickname] = useState("");
+  const [confirmingDeleteHandle, setConfirmingDeleteHandle] = useState(null);
 
   useEffect(() => {
     loadContacts();
@@ -32,7 +35,7 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
   }
 
   async function handleAdd() {
-    const h = handleInput.trim().toUpperCase();
+    const h = normalizeHandle(handleInput);
     if (h.length < 4) return;
     await addContact(h, nickInput.trim() || h);
     setHandleInput("");
@@ -46,10 +49,14 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
       setEditingHandle(null);
       setEditingNickname("");
     }
+    if (confirmingDeleteHandle === h) {
+      setConfirmingDeleteHandle(null);
+    }
     loadContacts();
   }
 
   function startEditing(contact) {
+    setConfirmingDeleteHandle(null);
     setEditingHandle(contact.handle);
     setEditingNickname(contact.nickname || contact.handle);
   }
@@ -57,6 +64,17 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
   function cancelEditing() {
     setEditingHandle(null);
     setEditingNickname("");
+  }
+
+  function requestDelete(handle) {
+    if (confirmingDeleteHandle === handle) return;
+    setEditingHandle(null);
+    setEditingNickname("");
+    setConfirmingDeleteHandle(handle);
+  }
+
+  function cancelDeleteConfirm() {
+    setConfirmingDeleteHandle(null);
   }
 
   async function handleSaveNickname(handle) {
@@ -73,10 +91,11 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
   }
 
   function shareHandle() {
+    const shareUrl = buildAddContactUrl(notify.handle || "");
     handleShare(
       "pulsarchat",
-      `Add me on pulsarchat! My handle: ${notify.handle || ""}`,
-      import.meta.env.VITE_APP_URL ?? "",
+      `Add me on pulsarchat. Opening this link adds my handle automatically: ${notify.handle || ""}`,
+      shareUrl,
       onToast,
     );
   }
@@ -162,7 +181,7 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
             className={styles.contactInput}
             placeholder="handle (e.g. NOVA-3KF8)"
             value={handleInput}
-            onChange={(e) => setHandleInput(e.target.value.toUpperCase())}
+            onChange={(e) => setHandleInput(formatHandleInput(e.target.value))}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
           <input
@@ -241,6 +260,30 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
                         </svg>
                       </button>
                     </>
+                  ) : confirmingDeleteHandle === c.handle ? (
+                    <>
+                      <button
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        onClick={() => handleDelete(c.handle)}
+                        style={{ width: "auto", padding: "6px 12px" }}
+                      >
+                        confirm
+                      </button>
+                      <button
+                        className={styles.iconBtn}
+                        onClick={cancelDeleteConfirm}
+                        title="cancel removal"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path
+                            d="M2 2l10 10M12 2L2 12"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button
@@ -273,7 +316,7 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
                       </button>
                       <button
                         className={styles.iconBtn}
-                        onClick={() => handleDelete(c.handle)}
+                        onClick={() => requestDelete(c.handle)}
                         title="remove contact"
                       >
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
