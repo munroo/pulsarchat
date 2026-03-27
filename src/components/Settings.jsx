@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "../App.module.css";
+
+const EXIT_ANIMATION_MS = 240;
+const GITHUB_URL = "https://github.com/munroo/pulsarchat";
 
 function Toggle({ on, onToggle }) {
   return (
@@ -14,8 +17,23 @@ function Toggle({ on, onToggle }) {
   );
 }
 
-export default function Settings({ settings, setSetting, onClose, fingerprint }) {
+export default function Settings({
+  settings,
+  setSetting,
+  onClose,
+  onExited,
+  isOpen,
+  fingerprint,
+  onOpenFeedback,
+  showFeedbackAction = false,
+}) {
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) return undefined;
+    const timerId = setTimeout(() => onExited?.(), EXIT_ANIMATION_MS);
+    return () => clearTimeout(timerId);
+  }, [isOpen, onExited]);
 
   async function copyFingerprint() {
     try {
@@ -26,8 +44,14 @@ export default function Settings({ settings, setSetting, onClose, fingerprint })
   }
 
   return (
-    <div className={styles.settingsOverlay} onClick={onClose}>
-      <div className={styles.settingsPanel} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={`${styles.settingsOverlay} ${isOpen ? styles.settingsOverlayOpen : ""}`}
+      onClick={onClose}
+    >
+      <div
+        className={`${styles.settingsPanel} ${isOpen ? styles.settingsPanelOpen : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.settingsHeader}>
           <span className={styles.settingsTitle}>Settings</span>
           <button className={styles.iconBtn} onClick={onClose} title="close">
@@ -49,7 +73,7 @@ export default function Settings({ settings, setSetting, onClose, fingerprint })
             <div className={styles.settingsRow}>
               <div>
                 <div className={styles.settingsLabel}>Live tab title</div>
-                <div className={styles.settingsSubLabel}>Show peer typing in browser tab</div>
+                <div className={styles.settingsSubLabel}>Show a generic typing signal in the browser tab</div>
               </div>
               <Toggle
                 on={settings.tabTitle}
@@ -127,6 +151,26 @@ export default function Settings({ settings, setSetting, onClose, fingerprint })
               </div>
             </div>
           )}
+
+          <div className={styles.settingsSection}>
+            <div className={styles.settingsSectionLabel}>About</div>
+            {showFeedbackAction && (
+              <button
+                className={styles.settingsActionBtn}
+                onClick={onOpenFeedback}
+              >
+                send feedback
+              </button>
+            )}
+            <a
+              href={GITHUB_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.settingsActionBtn}
+            >
+              open source on github
+            </a>
+          </div>
         </div>
       </div>
     </div>

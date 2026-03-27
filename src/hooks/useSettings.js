@@ -3,7 +3,7 @@ import { useState } from "react";
 const KEY = "pulsarchat_settings";
 
 const DEFAULTS = {
-  tabTitle: true,
+  tabTitle: false,
   sounds: false,
   autoDelete: false,
   compact: false,

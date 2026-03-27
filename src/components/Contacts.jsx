@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { getContacts, addContact, deleteContact } from "../utils/contacts";
+import {
+  getContacts,
+  addContact,
+  deleteContact,
+  updateContactNickname,
+} from "../utils/contacts";
 import { handleShare } from "../utils/share";
 import styles from "../App.module.css";
 
@@ -7,6 +12,8 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
   const [contacts, setContacts] = useState([]);
   const [handleInput, setHandleInput] = useState("");
   const [nickInput, setNickInput] = useState("");
+  const [editingHandle, setEditingHandle] = useState(null);
+  const [editingNickname, setEditingNickname] = useState("");
 
   useEffect(() => {
     loadContacts();
@@ -35,6 +42,27 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
 
   async function handleDelete(h) {
     await deleteContact(h);
+    if (editingHandle === h) {
+      setEditingHandle(null);
+      setEditingNickname("");
+    }
+    loadContacts();
+  }
+
+  function startEditing(contact) {
+    setEditingHandle(contact.handle);
+    setEditingNickname(contact.nickname || contact.handle);
+  }
+
+  function cancelEditing() {
+    setEditingHandle(null);
+    setEditingNickname("");
+  }
+
+  async function handleSaveNickname(handle) {
+    await updateContactNickname(handle, editingNickname.trim() || handle);
+    setEditingHandle(null);
+    setEditingNickname("");
     loadContacts();
   }
 
@@ -172,31 +200,93 @@ export default function Contacts({ onBack, onPingContact, notify, onToast, onOpe
                   }
                 />
                 <div className={styles.contactInfo}>
-                  <span className={styles.contactNick}>{c.nickname}</span>
+                  {editingHandle === c.handle ? (
+                    <input
+                      className={styles.contactNickInput}
+                      value={editingNickname}
+                      onChange={(e) => setEditingNickname(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveNickname(c.handle);
+                        if (e.key === "Escape") cancelEditing();
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <span className={styles.contactNick}>{c.nickname}</span>
+                  )}
                   <span className={styles.contactHandle}>{c.handle}</span>
                 </div>
                 <div className={styles.contactActions}>
-                  <button
-                    className={`${styles.btn} ${styles.btnGhost}`}
-                    onClick={() => onPingContact(c)}
-                    style={{ width: "auto", padding: "6px 14px" }}
-                  >
-                    ping
-                  </button>
-                  <button
-                    className={styles.iconBtn}
-                    onClick={() => handleDelete(c.handle)}
-                    title="remove contact"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <path
-                        d="M2 2l10 10M12 2L2 12"
-                        stroke="currentColor"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </button>
+                  {editingHandle === c.handle ? (
+                    <>
+                      <button
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        onClick={() => handleSaveNickname(c.handle)}
+                        style={{ width: "auto", padding: "6px 12px" }}
+                      >
+                        save
+                      </button>
+                      <button
+                        className={styles.iconBtn}
+                        onClick={cancelEditing}
+                        title="cancel edit"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path
+                            d="M2 2l10 10M12 2L2 12"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className={`${styles.btn} ${styles.btnGhost}`}
+                        onClick={() => onPingContact(c)}
+                        style={{ width: "auto", padding: "6px 14px" }}
+                      >
+                        ping
+                      </button>
+                      <button
+                        className={styles.iconBtn}
+                        onClick={() => startEditing(c)}
+                        title="edit nickname"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path
+                            d="M2 10.5V12h1.5L11 4.5 9.5 3 2 10.5z"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M8.5 4l1.5 1.5"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        className={styles.iconBtn}
+                        onClick={() => handleDelete(c.handle)}
+                        title="remove contact"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                          <path
+                            d="M2 2l10 10M12 2L2 12"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}

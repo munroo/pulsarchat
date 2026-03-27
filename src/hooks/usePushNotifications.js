@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { App } from "@capacitor/app";
 
@@ -9,7 +10,28 @@ import { App } from "@capacitor/app";
  */
 export function usePushNotifications(registerPushToken) {
   useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return undefined;
+    }
+
     let appStateListener;
+
+    function buildPingUrl(data) {
+      if (data.chatMode === "saved" && data.senderHandle && data.room) {
+        const params = new URLSearchParams({
+          savedRoom: data.room,
+          contact: data.senderHandle.toUpperCase(),
+        });
+        return `/?${params.toString()}`;
+      }
+
+      if (data.room) {
+        const params = new URLSearchParams({ room: data.room });
+        return `/?${params.toString()}`;
+      }
+
+      return null;
+    }
 
     async function setup() {
       const permission = await PushNotifications.requestPermissions();
@@ -41,8 +63,9 @@ export function usePushNotifications(registerPushToken) {
         "pushNotificationActionPerformed",
         (action) => {
           const data = action.notification.data;
-          if (data.room) {
-            window.location.href = `/?room=${data.room}`;
+          const targetUrl = buildPingUrl(data);
+          if (targetUrl) {
+            window.location.href = targetUrl;
           }
         },
       );
